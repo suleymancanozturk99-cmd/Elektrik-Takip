@@ -4,7 +4,7 @@ workflows:
     environment:
       node: 18
       vars:
-        EXPO_TOKEN: 0645f0ab-a217-4ccb-be70-fb72585959d4
+        EXPO_TOKEN: EIijYxu8KjSPAt8g0HGdgVBySDQpZcHzJwIVMMtY
     scripts:
       - name: Install dependencies
         script: npm install --legacy-peer-deps
