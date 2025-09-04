@@ -8,8 +8,7 @@ workflows:
     scripts:
       - name: Install dependencies
         script: npm install --legacy-peer-deps
-      - name: Build Android APK
+      - name: Build Android APK on Expo Cloud
         script: |
-          npx eas build -p android --profile preview --non-interactive
-    artifacts:
-      - build/**/*.apk
+          npm install -g eas-cli
+          eas build -p android --profile preview --non-interactive
