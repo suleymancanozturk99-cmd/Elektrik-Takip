@@ -12,11 +12,21 @@ export default function PaymentMethodCard({ eldenAmount, ibanAmount }: PaymentMe
   const { jobs, timeFilter } = useJobs();
   const [withFatherFilter, setWithFatherFilter] = useState(false);
   
-  // Recalculate payment methods with babam filter
-  const filteredJobs = jobs.filter(job => {
+    // Recalculate payment methods with babam filter
+  const filteredJobs = jobs?.filter(job => {
+    // Validate job and required fields
+    if (!job || !job.createdAt || !job.isPaid) {
+      return false;
+    }
+    
     // Apply time filter
     const now = new Date();
     const jobDate = new Date(job.createdAt);
+    
+    // Validate date creation
+    if (isNaN(jobDate.getTime())) {
+      return false;
+    }
     
     let isInTimeRange = false;
     switch (timeFilter) {
@@ -26,10 +36,10 @@ export default function PaymentMethodCard({ eldenAmount, ibanAmount }: PaymentMe
         isInTimeRange = jobDay.getTime() === today.getTime();
         break;
       case 'weekly':
-        const weekStart = new Date(today);
-        weekStart.setDate(today.getDate() - today.getDay());
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay());
         const jobDayWeek = new Date(jobDate.getFullYear(), jobDate.getMonth(), jobDate.getDate());
-        isInTimeRange = jobDayWeek >= weekStart && jobDayWeek <= today;
+        isInTimeRange = jobDayWeek >= weekStart && jobDayWeek <= now;
         break;
       case 'monthly':
         isInTimeRange = jobDate.getMonth() === now.getMonth() && 
@@ -41,11 +51,11 @@ export default function PaymentMethodCard({ eldenAmount, ibanAmount }: PaymentMe
     
     // Apply babam filter if enabled
     if (withFatherFilter) {
-      return isInTimeRange && job.isPaid && job.withFather;
+      return isInTimeRange && job.withFather;
     }
     
-    return isInTimeRange && job.isPaid;
-  });
+    return isInTimeRange;
+  }) || [];
   
   const filteredEldenAmount = filteredJobs
     .filter(job => job.paymentMethod === 'Elden')
