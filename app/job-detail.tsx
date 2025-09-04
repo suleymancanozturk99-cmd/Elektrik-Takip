@@ -255,7 +255,7 @@ export default function JobDetailPage() {
               </View>
             </View>
 
-            <View style={styles.switchRow}>
+                        <View style={styles.switchRow}>
               <Text style={styles.label}>Ödeme alındı mı?</Text>
               <Switch
                 value={formData.isPaid}
@@ -264,6 +264,24 @@ export default function JobDetailPage() {
                 thumbColor={formData.isPaid ? '#ffffff' : '#f4f3f4'}
               />
             </View>
+
+            {formData.isPaid && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Ödeme Yöntemi *</Text>
+                <TouchableOpacity
+                  style={styles.methodButton}
+                  onPress={() => setPaymentMethodModalVisible(true)}
+                >
+                  <MaterialIcons 
+                    name={formData.paymentMethod === 'Elden' ? 'account-balance-wallet' : 'account-balance'} 
+                    size={20} 
+                    color="#666" 
+                  />
+                  <Text style={styles.methodButtonText}>{formData.paymentMethod}</Text>
+                  <MaterialIcons name="keyboard-arrow-down" size={20} color="#666" />
+                </TouchableOpacity>
+              </View>
+            )}
 
             {!formData.isPaid && (
               <>

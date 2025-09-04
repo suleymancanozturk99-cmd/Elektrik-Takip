@@ -1,19 +1,15 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Switch } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { TimeFilter } from '@/types/job';
 
 interface TimeFilterTabsProps {
   activeFilter: TimeFilter;
   onFilterChange: (filter: TimeFilter) => void;
-  withFatherFilter: boolean;
-  onWithFatherFilterChange: (value: boolean) => void;
 }
+
 export default function TimeFilterTabs({ 
   activeFilter, 
-  onFilterChange, 
-  withFatherFilter, 
-  onWithFatherFilterChange 
+  onFilterChange
 }: TimeFilterTabsProps) {
   const filters = [
     { key: 'daily' as TimeFilter, label: 'Günlük' },
@@ -42,22 +38,13 @@ export default function TimeFilterTabs({
         ))}
       </View>
       
-      <View style={styles.fatherFilter}>
-        <MaterialIcons name="people" size={20} color="#2196f3" />
-        <Text style={styles.fatherFilterText}>Sadece Babamla Yapılanlar</Text>
-        <Switch
-          value={withFatherFilter}
-          onValueChange={onWithFatherFilterChange}
-          trackColor={{ false: '#767577', true: '#2196f3' }}
-          thumbColor={withFatherFilter ? '#ffffff' : '#f4f3f4'}
-        />
-      </View>
+
     </View>
   );
 }
 const styles = StyleSheet.create({
   wrapper: {
-    marginBottom: 16,
+    marginBottom: 8,
   },
   container: {
     flexDirection: 'row',
@@ -84,26 +71,5 @@ const styles = StyleSheet.create({
   },  activeTabText: {
     color: 'white',
   },
-  fatherFilter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  fatherFilterText: {
-    fontSize: 14,
-    color: '#333',
-    marginLeft: 8,
-    marginRight: 12,
-    flex: 1,
-  },
+
 });

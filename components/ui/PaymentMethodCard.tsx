@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Switch } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useJobs } from '@/hooks/useJobs';
 
 interface PaymentMethodCardProps {
   eldenAmount: number;
@@ -8,9 +9,57 @@ interface PaymentMethodCardProps {
 }
 
 export default function PaymentMethodCard({ eldenAmount, ibanAmount }: PaymentMethodCardProps) {
-  const total = eldenAmount + ibanAmount;
-  const eldenPercentage = total > 0 ? (eldenAmount / total) * 100 : 0;
-  const ibanPercentage = total > 0 ? (ibanAmount / total) * 100 : 0;
+  const { jobs, timeFilter } = useJobs();
+  const [withFatherFilter, setWithFatherFilter] = useState(false);
+  
+  // Recalculate payment methods with babam filter
+  const filteredJobs = jobs.filter(job => {
+    // Apply time filter
+    const now = new Date();
+    const jobDate = new Date(job.createdAt);
+    
+    let isInTimeRange = false;
+    switch (timeFilter) {
+      case 'daily':
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const jobDay = new Date(jobDate.getFullYear(), jobDate.getMonth(), jobDate.getDate());
+        isInTimeRange = jobDay.getTime() === today.getTime();
+        break;
+      case 'weekly':
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - today.getDay());
+        const jobDayWeek = new Date(jobDate.getFullYear(), jobDate.getMonth(), jobDate.getDate());
+        isInTimeRange = jobDayWeek >= weekStart && jobDayWeek <= today;
+        break;
+      case 'monthly':
+        isInTimeRange = jobDate.getMonth() === now.getMonth() && 
+                       jobDate.getFullYear() === now.getFullYear();
+        break;
+      default:
+        isInTimeRange = true;
+    }
+    
+    // Apply babam filter if enabled
+    if (withFatherFilter) {
+      return isInTimeRange && job.isPaid && job.withFather;
+    }
+    
+    return isInTimeRange && job.isPaid;
+  });
+  
+  const filteredEldenAmount = filteredJobs
+    .filter(job => job.paymentMethod === 'Elden')
+    .reduce((sum, job) => sum + job.price, 0);
+  
+  const filteredIbanAmount = filteredJobs
+    .filter(job => job.paymentMethod === 'IBAN')  
+    .reduce((sum, job) => sum + job.price, 0);
+  
+  const displayEldenAmount = withFatherFilter ? filteredEldenAmount : eldenAmount;
+  const displayIbanAmount = withFatherFilter ? filteredIbanAmount : ibanAmount;
+  const total = displayEldenAmount + displayIbanAmount;
+  const eldenPercentage = total > 0 ? (displayEldenAmount / total) * 100 : 0;
+  const ibanPercentage = total > 0 ? (displayIbanAmount / total) * 100 : 0;
 
   const formatCurrency = (amount: number) => {
     return `₺${amount.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}`;
@@ -21,6 +70,17 @@ export default function PaymentMethodCard({ eldenAmount, ibanAmount }: PaymentMe
       <View style={styles.header}>
         <MaterialIcons name="payment" size={24} color="#2196f3" />
         <Text style={styles.title}>Ödeme Yöntemleri</Text>
+      </View>
+      
+      <View style={styles.fatherFilter}>
+        <MaterialIcons name="people" size={20} color="#2196f3" />
+        <Text style={styles.fatherFilterText}>Sadece Babamla Yapılanlar</Text>
+        <Switch
+          value={withFatherFilter}
+          onValueChange={setWithFatherFilter}
+          trackColor={{ false: '#767577', true: '#2196f3' }}
+          thumbColor={withFatherFilter ? '#ffffff' : '#f4f3f4'}
+        />
       </View>
       
       <View style={styles.progressContainer}>
@@ -37,7 +97,7 @@ export default function PaymentMethodCard({ eldenAmount, ibanAmount }: PaymentMe
             <MaterialIcons name="account-balance-wallet" size={16} color="#4caf50" />
             <Text style={styles.methodLabel}>Elden</Text>
           </View>
-          <Text style={styles.methodAmount}>{formatCurrency(eldenAmount)}</Text>
+          <Text style={styles.methodAmount}>{formatCurrency(displayEldenAmount)}</Text>
           <Text style={styles.methodPercentage}>%{eldenPercentage.toFixed(1)}</Text>
         </View>
 
@@ -47,7 +107,7 @@ export default function PaymentMethodCard({ eldenAmount, ibanAmount }: PaymentMe
             <MaterialIcons name="account-balance" size={16} color="#ff9800" />
             <Text style={styles.methodLabel}>IBAN</Text>
           </View>
-          <Text style={styles.methodAmount}>{formatCurrency(ibanAmount)}</Text>
+          <Text style={styles.methodAmount}>{formatCurrency(displayIbanAmount)}</Text>
           <Text style={styles.methodPercentage}>%{ibanPercentage.toFixed(1)}</Text>
         </View>
       </View>
@@ -155,5 +215,21 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#2196f3',
+  },
+  fatherFilter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  fatherFilterText: {
+    fontSize: 14,
+    color: '#333',
+    marginLeft: 8,
+    flex: 1,
   },
 });

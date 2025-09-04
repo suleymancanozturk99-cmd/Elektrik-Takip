@@ -7,7 +7,7 @@ import TimeFilterTabs from '@/components/ui/TimeFilterTabs';
 import PaymentMethodCard from '@/components/ui/PaymentMethodCard';
 export default function Dashboard() {
   const insets = useSafeAreaInsets();
-  const { stats, timeFilter, setTimeFilter, withFatherFilter, setWithFatherFilter, loading, refreshJobs } = useJobs();
+  const { stats, timeFilter, setTimeFilter, loading, refreshJobs } = useJobs();
 
   const formatCurrency = (amount: number) => {
     return `₺${amount.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}`;
@@ -33,11 +33,9 @@ export default function Dashboard() {
         <Text style={styles.welcomeText}>Hoş Geldiniz</Text>
         <Text style={styles.subtitleText}>{getFilterTitle()} Performans Özeti</Text>
       </View>
-      <TimeFilterTabs 
+            <TimeFilterTabs 
         activeFilter={timeFilter} 
         onFilterChange={setTimeFilter}
-        withFatherFilter={withFatherFilter}
-        onWithFatherFilterChange={setWithFatherFilter}
       />
 
       <View style={styles.statsGrid}>

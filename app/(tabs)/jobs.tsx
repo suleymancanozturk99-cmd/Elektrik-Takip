@@ -10,7 +10,7 @@ import { Job } from '@/types/job';
 
 export default function JobsPage() {
   const insets = useSafeAreaInsets();
-  const { filteredJobs, timeFilter, setTimeFilter, withFatherFilter, setWithFatherFilter, loading, refreshJobs } = useJobs();
+    const { filteredJobs, timeFilter, setTimeFilter, loading, refreshJobs } = useJobs();
 
   const handleJobPress = (job: Job) => {
     router.push({
@@ -34,8 +34,6 @@ export default function JobsPage() {
     <View style={[styles.container, { paddingTop: insets.top }]}>      <TimeFilterTabs 
         activeFilter={timeFilter} 
         onFilterChange={setTimeFilter}
-        withFatherFilter={withFatherFilter}
-        onWithFatherFilterChange={setWithFatherFilter}
       />
 
       <FlatList
