@@ -7,7 +7,7 @@ workflows:
         EXPO_TOKEN: $EXPO_TOKEN
     scripts:
       - name: Install dependencies
-        script: npm install
+        script: npm install --legacy-peer-deps
       - name: Build Android APK
         script: |
           npx eas build -p android --profile preview --non-interactive
