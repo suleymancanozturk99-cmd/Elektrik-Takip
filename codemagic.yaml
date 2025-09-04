@@ -3,17 +3,13 @@ workflows:
     name: Expo Android APK
     environment:
       node: 18
-      npm: true
       vars:
         EXPO_TOKEN: $EXPO_TOKEN
     scripts:
       - name: Install dependencies
         script: npm install
-      - name: Login to Expo
-        script: |
-          npx expo login --non-interactive -u $EXPO_USERNAME -p $EXPO_PASSWORD || true
       - name: Build Android APK
         script: |
-          npx eas build -p android --profile preview --non-interactive --local --output apk/app-release.apk
+          npx eas build -p android --profile preview --non-interactive
     artifacts:
-      - apk/*.apk
+      - build/**/*.apk
