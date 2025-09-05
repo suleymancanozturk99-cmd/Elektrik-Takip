@@ -43,9 +43,17 @@ export default function JobCard({ job, onPress, showPaymentStatus = false }: Job
     >
       <View style={styles.header}>
         <Text style={styles.jobName}>{job.name}</Text>
-        <View style={styles.statusContainer}>
+                <View style={styles.statusContainer}>
           {job.withFather && (
             <MaterialIcons name="people" size={16} color="#2196f3" style={styles.statusIcon} />
+          )}
+          {job.isPaid && (
+            <MaterialIcons 
+              name={job.paymentMethod === 'Elden' ? 'account-balance-wallet' : 'account-balance'} 
+              size={16} 
+              color="#4caf50" 
+              style={styles.statusIcon}
+            />
           )}
           <MaterialIcons 
             name={job.isPaid ? "check-circle" : "schedule"} 

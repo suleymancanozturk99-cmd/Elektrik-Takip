@@ -172,11 +172,18 @@ export default function AddJobPage() {
           </View>
         </View>
 
-                <View style={styles.switchRow}>
+                        <View style={styles.switchRow}>
           <Text style={styles.label}>Ödeme alındı mı?</Text>
           <Switch
             value={formData.isPaid}
-            onValueChange={(value) => setFormData(prev => ({ ...prev, isPaid: value }))}
+            onValueChange={(value) => {
+              setFormData(prev => ({ 
+                ...prev, 
+                isPaid: value,
+                // Ödeme alınmadıysa varsayılan tarih set et
+                estimatedPaymentDate: !value ? new Date() : prev.estimatedPaymentDate
+              }));
+            }}
             trackColor={{ false: '#767577', true: '#4caf50' }}
             thumbColor={formData.isPaid ? '#ffffff' : '#f4f3f4'}
           />

@@ -22,6 +22,14 @@ export interface JobStats {
     elden: number;
     iban: number;
   };
+  withFatherPayments: {
+    elden: number;
+    iban: number;
+  };
+  withoutFatherPayments: {
+    elden: number;
+    iban: number;
+  };
 }
 
 export type TimeFilter = 'daily' | 'weekly' | 'monthly';

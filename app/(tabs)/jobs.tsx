@@ -10,50 +10,86 @@ import { Job } from '@/types/job';
 
 export default function JobsPage() {
   const insets = useSafeAreaInsets();
-    const { filteredJobs, timeFilter, setTimeFilter, loading, refreshJobs } = useJobs();
+  const { filteredJobs, timeFilter, setTimeFilter, loading, refreshJobs } = useJobs();
 
   const handleJobPress = (job: Job) => {
-    router.push({
-      pathname: '/job-detail',
-      params: { jobId: job.id }
-    });
+    if (job && job.id) {
+      router.push({
+        pathname: '/job-detail',
+        params: { jobId: job.id }
+      });
+    }
   };
 
   const handleAddJob = () => {
     router.push('/add-job');
   };
 
-      const renderJob = ({ item }: { item: Job }) => {
-    if (!item || !item.id) {
-      return <View />;
+  const renderJob = ({ item }: { item: Job }) => {
+    // Validate item completely
+    if (!item || typeof item !== 'object' || !item.id || !item.name) {
+      return <View style={{ height: 0 }} />;
     }
+    
     return (
-      <JobCard 
-        job={item} 
-        onPress={() => handleJobPress(item)}
-      />
+      <View>
+        <JobCard 
+          job={item} 
+          onPress={() => handleJobPress(item)}
+        />
+      </View>
     );
   };
 
+  const renderEmptyComponent = () => (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyText}>
+        Henüz iş kaydı bulunmuyor
+      </Text>
+    </View>
+  );
+
+  // Filter and validate jobs array
+  const validJobs = React.useMemo(() => {
+    if (!Array.isArray(filteredJobs)) {
+      return [];
+    }
+    
+    return filteredJobs.filter(job => {
+      return job && 
+             typeof job === 'object' && 
+             job.id && 
+             typeof job.id === 'string' &&
+             job.name &&
+             typeof job.name === 'string';
+    });
+  }, [filteredJobs]);
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>      <TimeFilterTabs 
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <TimeFilterTabs 
         activeFilter={timeFilter} 
         onFilterChange={setTimeFilter}
       />
 
       <FlatList
-        data={filteredJobs?.filter(job => job && job.id) || []}
+        data={validJobs}
         renderItem={renderJob}
-        keyExtractor={(item, index) => item?.id?.toString() || `job-${index}`}
+        keyExtractor={(item, index) => {
+          if (item && item.id && typeof item.id === 'string') {
+            return item.id;
+          }
+          return `job-fallback-${index}`;
+        }}
         contentContainerStyle={styles.listContainer}
         refreshControl={
           <RefreshControl refreshing={loading} onRefresh={refreshJobs} />
         }
-        ListEmptyComponent={() => (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Henüz iş kaydı bulunmuyor</Text>
-          </View>
-        )}
+        ListEmptyComponent={renderEmptyComponent}
+        removeClippedSubviews={false}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={10}
       />
 
       <TouchableOpacity style={styles.fab} onPress={handleAddJob}>

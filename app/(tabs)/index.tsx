@@ -69,16 +69,18 @@ export default function Dashboard() {
           />
         </View>
 
-        <View style={styles.statsRow}>
+                <View style={styles.statsRow}>
           <StatsCard
             title="Babamla Yapılan"
             value={formatCurrency(stats.revenueWithFather)}
+            subtitle={`Elden: ${formatCurrency(stats.withFatherPayments.elden)} | IBAN: ${formatCurrency(stats.withFatherPayments.iban)}`}
             icon="people"
             color="#9c27b0"
           />
           <StatsCard
             title="Tek Başıma"
             value={formatCurrency(stats.revenueWithoutFather)}
+            subtitle={`Elden: ${formatCurrency(stats.withoutFatherPayments.elden)} | IBAN: ${formatCurrency(stats.withoutFatherPayments.iban)}`}
             icon="person"
             color="#607d8b"
           />
@@ -103,6 +105,27 @@ export default function Dashboard() {
           <Text style={styles.summaryValue}>
             {stats.totalRevenue > 0 ? `%${(((stats.totalRevenue - stats.totalCost) / stats.totalRevenue) * 100).toFixed(1)}` : `%0`}
           </Text>
+        </View>
+        
+        <View style={styles.detailBreakdown}>
+          <Text style={styles.breakdownTitle}>Detaylı Özet</Text>
+          <View style={styles.breakdownRow}>
+            <Text style={styles.breakdownLabel}>Babamla Yapılan İşler:</Text>
+            <Text style={styles.breakdownValue}>{formatCurrency(stats.revenueWithFather)}</Text>
+          </View>
+          <View style={styles.breakdownSubRow}>
+            <Text style={styles.breakdownSubLabel}>• Elden: {formatCurrency(stats.withFatherPayments.elden)}</Text>
+            <Text style={styles.breakdownSubLabel}>• IBAN: {formatCurrency(stats.withFatherPayments.iban)}</Text>
+          </View>
+          
+          <View style={styles.breakdownRow}>
+            <Text style={styles.breakdownLabel}>Tek Başıma Yapılan İşler:</Text>
+            <Text style={styles.breakdownValue}>{formatCurrency(stats.revenueWithoutFather)}</Text>
+          </View>
+          <View style={styles.breakdownSubRow}>
+            <Text style={styles.breakdownSubLabel}>• Elden: {formatCurrency(stats.withoutFatherPayments.elden)}</Text>
+            <Text style={styles.breakdownSubLabel}>• IBAN: {formatCurrency(stats.withoutFatherPayments.iban)}</Text>
+          </View>
         </View>
       </View>
     </ScrollView>
@@ -167,5 +190,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
+  },
+  detailBreakdown: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  breakdownTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  breakdownLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  breakdownValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#2196f3',
+  },
+  breakdownSubRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    paddingLeft: 16,
+  },
+  breakdownSubLabel: {
+    fontSize: 12,
+    color: '#999',
   },
 });

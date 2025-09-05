@@ -67,19 +67,29 @@ export class JobService {
     });
   }
 
-    static calculateStats(jobs: Job[]): JobStats {
+      static calculateStats(jobs: Job[]): JobStats {
     const paidJobs = jobs.filter(job => job.isPaid);
+    const withFatherPaidJobs = paidJobs.filter(job => job.withFather);
+    const withoutFatherPaidJobs = paidJobs.filter(job => !job.withFather);
     
     return {
       totalRevenue: paidJobs.reduce((sum, job) => sum + job.price, 0),
       totalCost: jobs.reduce((sum, job) => sum + job.cost, 0),
       completedJobs: paidJobs.length,
       pendingPayments: jobs.filter(job => !job.isPaid).length,
-      revenueWithFather: paidJobs.filter(job => job.withFather).reduce((sum, job) => sum + job.price, 0),
-      revenueWithoutFather: paidJobs.filter(job => !job.withFather).reduce((sum, job) => sum + job.price, 0),
+      revenueWithFather: withFatherPaidJobs.reduce((sum, job) => sum + job.price, 0),
+      revenueWithoutFather: withoutFatherPaidJobs.reduce((sum, job) => sum + job.price, 0),
       paymentMethods: {
         elden: paidJobs.filter(job => job.paymentMethod === 'Elden').reduce((sum, job) => sum + job.price, 0),
         iban: paidJobs.filter(job => job.paymentMethod === 'IBAN').reduce((sum, job) => sum + job.price, 0),
+      },
+      withFatherPayments: {
+        elden: withFatherPaidJobs.filter(job => job.paymentMethod === 'Elden').reduce((sum, job) => sum + job.price, 0),
+        iban: withFatherPaidJobs.filter(job => job.paymentMethod === 'IBAN').reduce((sum, job) => sum + job.price, 0),
+      },
+      withoutFatherPayments: {
+        elden: withoutFatherPaidJobs.filter(job => job.paymentMethod === 'Elden').reduce((sum, job) => sum + job.price, 0),
+        iban: withoutFatherPaidJobs.filter(job => job.paymentMethod === 'IBAN').reduce((sum, job) => sum + job.price, 0),
       },
     };
   }

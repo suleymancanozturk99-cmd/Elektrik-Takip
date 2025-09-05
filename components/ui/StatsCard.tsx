@@ -7,9 +7,10 @@ interface StatsCardProps {
   value: string;
   icon: keyof typeof MaterialIcons.glyphMap;
   color: string;
+  subtitle?: string;
 }
 
-export default function StatsCard({ title, value, icon, color }: StatsCardProps) {
+export default function StatsCard({ title, value, icon, color, subtitle }: StatsCardProps) {
   return (
     <View style={[styles.card, { borderColor: color }]}>
       <View style={[styles.iconContainer, { backgroundColor: color }]}>
@@ -17,6 +18,7 @@ export default function StatsCard({ title, value, icon, color }: StatsCardProps)
       </View>
       <Text style={styles.value}>{String(value)}</Text>
       <Text style={styles.title}>{String(title)}</Text>
+      {subtitle && <Text style={styles.subtitle}>{String(subtitle)}</Text>}
     </View>
   );
 }
@@ -56,5 +58,11 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginTop: 4,
+  },
+  subtitle: {
+    fontSize: 8,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 2,
   },
 });
