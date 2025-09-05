@@ -23,9 +23,9 @@ export default function JobsPage() {
     router.push('/add-job');
   };
 
-    const renderJob = ({ item }: { item: Job }) => {
+      const renderJob = ({ item }: { item: Job }) => {
     if (!item || !item.id) {
-      return null;
+      return <View />;
     }
     return (
       <JobCard 
@@ -42,9 +42,9 @@ export default function JobsPage() {
       />
 
       <FlatList
-        data={filteredJobs || []}
+        data={filteredJobs?.filter(job => job && job.id) || []}
         renderItem={renderJob}
-        keyExtractor={(item, index) => item?.id || `job-${index}`}
+        keyExtractor={(item, index) => item?.id?.toString() || `job-${index}`}
         contentContainerStyle={styles.listContainer}
         refreshControl={
           <RefreshControl refreshing={loading} onRefresh={refreshJobs} />
