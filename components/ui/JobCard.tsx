@@ -55,11 +55,15 @@ export default function JobCard({ job, onPress, showPaymentStatus = false }: Job
         </View>
       </View>
       
-      <Text style={styles.description} numberOfLines={2}>{job.description}</Text>
+            <Text style={styles.description} numberOfLines={2}>
+        {String(job.description || '')}
+      </Text>
       
       <View style={styles.amounts}>
         <Text style={styles.price}>{formatCurrency(job.price)}</Text>
-        <Text style={styles.cost}>Maliyet: {formatCurrency(job.cost)}</Text>
+        <Text style={styles.cost}>
+          {`Maliyet: ${formatCurrency(job.cost)}`}
+        </Text>
       </View>
 
       <View style={styles.footer}>
@@ -75,7 +79,7 @@ export default function JobCard({ job, onPress, showPaymentStatus = false }: Job
         <View style={styles.paymentDate}>
           <MaterialIcons name="schedule" size={14} color="#666" />
           <Text style={styles.paymentDateText}>
-            Tahmini: {formatDate(job.estimatedPaymentDate)}
+            {`Tahmini: ${formatDate(job.estimatedPaymentDate)}`}
           </Text>
         </View>
       )}

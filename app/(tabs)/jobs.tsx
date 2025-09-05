@@ -23,12 +23,17 @@ export default function JobsPage() {
     router.push('/add-job');
   };
 
-  const renderJob = ({ item }: { item: Job }) => (
-    <JobCard 
-      job={item} 
-      onPress={() => handleJobPress(item)}
-    />
-  );
+    const renderJob = ({ item }: { item: Job }) => {
+    if (!item || !item.id) {
+      return null;
+    }
+    return (
+      <JobCard 
+        job={item} 
+        onPress={() => handleJobPress(item)}
+      />
+    );
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>      <TimeFilterTabs 
@@ -37,13 +42,18 @@ export default function JobsPage() {
       />
 
       <FlatList
-        data={filteredJobs}
+        data={filteredJobs || []}
         renderItem={renderJob}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => item?.id || `job-${index}`}
         contentContainerStyle={styles.listContainer}
         refreshControl={
           <RefreshControl refreshing={loading} onRefresh={refreshJobs} />
         }
+        ListEmptyComponent={() => (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>Henüz iş kaydı bulunmuyor</Text>
+          </View>
+        )}
       />
 
       <TouchableOpacity style={styles.fab} onPress={handleAddJob}>
@@ -76,5 +86,16 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 100,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
 });
