@@ -71,7 +71,7 @@ export default function PaymentMethodCard({ eldenAmount, ibanAmount }: PaymentMe
   const eldenPercentage = total > 0 ? (displayEldenAmount / total) * 100 : 0;
   const ibanPercentage = total > 0 ? (displayIbanAmount / total) * 100 : 0;
 
-  const formatCurrency = (amount: number) => {
+    const formatCurrency = (amount: number) => {
     return `₺${amount.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}`;
   };
 
@@ -108,7 +108,7 @@ export default function PaymentMethodCard({ eldenAmount, ibanAmount }: PaymentMe
             <Text style={styles.methodLabel}>Elden</Text>
           </View>
           <Text style={styles.methodAmount}>{formatCurrency(displayEldenAmount)}</Text>
-          <Text style={styles.methodPercentage}>%{eldenPercentage.toFixed(1)}</Text>
+          <Text style={styles.methodPercentage}>{`%${eldenPercentage.toFixed(1)}`}</Text>
         </View>
 
         <View style={styles.methodItem}>
@@ -118,7 +118,7 @@ export default function PaymentMethodCard({ eldenAmount, ibanAmount }: PaymentMe
             <Text style={styles.methodLabel}>IBAN</Text>
           </View>
           <Text style={styles.methodAmount}>{formatCurrency(displayIbanAmount)}</Text>
-          <Text style={styles.methodPercentage}>%{ibanPercentage.toFixed(1)}</Text>
+          <Text style={styles.methodPercentage}>{`%${ibanPercentage.toFixed(1)}`}</Text>
         </View>
       </View>
       

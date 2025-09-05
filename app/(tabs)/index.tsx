@@ -38,7 +38,7 @@ export default function Dashboard() {
         onFilterChange={setTimeFilter}
       />
 
-      <View style={styles.statsGrid}>
+            <View style={styles.statsGrid}>
         <View style={styles.statsRow}>
           <StatsCard
             title="Toplam Ciro"
@@ -81,7 +81,8 @@ export default function Dashboard() {
             value={formatCurrency(stats.revenueWithoutFather)}
             icon="person"
             color="#607d8b"
-          />        </View>
+          />
+        </View>
       </View>
 
       <PaymentMethodCard 
@@ -100,7 +101,7 @@ export default function Dashboard() {
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Kar Marjı:</Text>
           <Text style={styles.summaryValue}>
-            {stats.totalRevenue > 0 ? `%${(((stats.totalRevenue - stats.totalCost) / stats.totalRevenue) * 100).toFixed(1)}` : '%0'}
+            {stats.totalRevenue > 0 ? `%${(((stats.totalRevenue - stats.totalCost) / stats.totalRevenue) * 100).toFixed(1)}` : `%0`}
           </Text>
         </View>
       </View>

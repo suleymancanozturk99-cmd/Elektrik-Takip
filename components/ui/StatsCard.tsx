@@ -15,8 +15,8 @@ export default function StatsCard({ title, value, icon, color }: StatsCardProps)
       <View style={[styles.iconContainer, { backgroundColor: color }]}>
         <MaterialIcons name={icon} size={24} color="white" />
       </View>
-      <Text style={styles.value}>{value}</Text>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.value}>{String(value)}</Text>
+      <Text style={styles.title}>{String(title)}</Text>
     </View>
   );
 }
