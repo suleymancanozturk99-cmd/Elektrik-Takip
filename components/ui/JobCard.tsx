@@ -55,19 +55,23 @@ export default function JobCard({ job, onPress, showPaymentStatus = false }: Job
         </View>
       </View>
       
-            <Text style={styles.description} numberOfLines={2}>
-        {String(job.description || '')}
+      <Text style={styles.description} numberOfLines={2}>
+        {job.description || ''}
       </Text>
       
       <View style={styles.amounts}>
-        <Text style={styles.price}>{formatCurrency(job.price)}</Text>
+        <Text style={styles.price}>
+          {formatCurrency(job.price)}
+        </Text>
         <Text style={styles.cost}>
           {`Maliyet: ${formatCurrency(job.cost)}`}
         </Text>
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.date}>{formatDate(job.createdAt)}</Text>
+        <Text style={styles.date}>
+          {formatDate(job.createdAt)}
+        </Text>
         <Text style={[styles.paymentStatus, { 
           color: job.isPaid ? '#4caf50' : '#ff9800' 
         }]}>
