@@ -91,20 +91,22 @@ export default function PendingPaymentsPage() {
     }
   };
 
-  const renderJob = ({ item }: { item: Job }) => (
+    const renderJob = ({ item }: { item: Job }) => (
     <View style={styles.jobContainer}>
       <JobCard 
         job={item} 
         onPress={() => handleJobPress(item)}
         showPaymentStatus={true}
       />
-      <TouchableOpacity
-        style={styles.completePaymentButton}
-        onPress={() => handleCompletePayment(item)}
-      >
-        <MaterialIcons name="check-circle" size={20} color="white" />
-        <Text style={styles.completePaymentText}>Ödeme Tamamlandı</Text>
-      </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={styles.completePaymentButton}
+          onPress={() => handleCompletePayment(item)}
+        >
+          <MaterialIcons name="check-circle" size={20} color="white" />
+          <Text style={styles.completePaymentText}>Ödeme Tamamlandı</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -262,24 +264,32 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   jobContainer: {
-    position: 'relative',
     marginBottom: 8,
   },
-  completePaymentButton: {
+  buttonContainer: {
     position: 'absolute',
-    bottom: 12,
-    right: 28,
+    bottom: 0,
+    right: 0,
+    left: 0,
+    alignItems: 'flex-end',
+    paddingRight: 28,
+    paddingBottom: 12,
+    zIndex: 10,
+    pointerEvents: 'box-none',
+  },
+  completePaymentButton: {
     backgroundColor: '#4caf50',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    elevation: 4,
+    elevation: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
+    zIndex: 11,
   },
   completePaymentText: {
     color: 'white',
