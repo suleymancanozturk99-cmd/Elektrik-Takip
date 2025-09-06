@@ -14,6 +14,7 @@ interface JobContextType {
   updateJob: (job: Job) => Promise<void>;
   deleteJob: (jobId: string) => Promise<void>;
   refreshJobs: () => Promise<void>;
+  importJobs: (jobs: Job[]) => Promise<void>;
 }
 
 export const JobContext = createContext<JobContextType | undefined>(undefined);
@@ -59,13 +60,22 @@ export function JobProvider({ children }: { children: ReactNode }) {
     setJobs(prev => prev.filter(job => job.id !== jobId));
   };
 
-  const refreshJobs = async () => {
+    const refreshJobs = async () => {
     await loadJobs();
+  };
+
+  const importJobs = async (importedJobs: Job[]) => {
+    try {
+      await JobService.importJobs(importedJobs);
+      setJobs(importedJobs);
+    } catch (error) {
+      console.error('Error importing jobs:', error);
+      throw error;
+    }
   };
   const filteredJobs = JobService.filterJobsByTime(jobs, timeFilter);
   const stats = JobService.calculateStats(filteredJobs);
   const pendingPaymentJobs = JobService.getPendingPaymentJobs(jobs);
-
   return (    <JobContext.Provider value={{
       jobs,
       stats,
@@ -78,6 +88,7 @@ export function JobProvider({ children }: { children: ReactNode }) {
       updateJob,
       deleteJob,
       refreshJobs,
+      importJobs,
     }}>
       {children}
     </JobContext.Provider>

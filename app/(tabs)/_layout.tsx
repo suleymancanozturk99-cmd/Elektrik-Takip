@@ -62,13 +62,23 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
+            <Tabs.Screen
         name="pending-payments"
         options={{
           title: 'Bekleyen Ödemeler',
           headerTitle: 'Bekleyen Ödemeler',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="payment" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Ayarlar',
+          headerTitle: 'Ayarlar',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="settings" size={size} color={color} />
           ),
         }}
       />

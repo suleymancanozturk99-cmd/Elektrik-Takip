@@ -32,13 +32,31 @@ export class JobService {
     }
   }
 
-  static async deleteJob(jobId: string): Promise<void> {
+    static async deleteJob(jobId: string): Promise<void> {
     try {
       const jobs = await this.getAllJobs();
       const filteredJobs = jobs.filter(job => job.id !== jobId);
       await AsyncStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(filteredJobs));
     } catch (error) {
       console.error('Error deleting job:', error);
+      throw error;
+    }
+  }
+
+  static async importJobs(jobs: Job[]): Promise<void> {
+    try {
+      await AsyncStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(jobs));
+    } catch (error) {
+      console.error('Error importing jobs:', error);
+      throw error;
+    }
+  }
+
+  static async exportJobs(): Promise<Job[]> {
+    try {
+      return await this.getAllJobs();
+    } catch (error) {
+      console.error('Error exporting jobs:', error);
       throw error;
     }
   }
