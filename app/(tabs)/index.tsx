@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useJobs } from '@/hooks/useJobs';
-import StatsCard from '@/components/ui/StatsCard';
+import MetricCard from '@/components/ui/MetricCard';
 import TimeFilterTabs from '@/components/ui/TimeFilterTabs';
 import PaymentMethodCard from '@/components/ui/PaymentMethodCard';
 export default function Dashboard() {
@@ -37,53 +37,70 @@ export default function Dashboard() {
         activeFilter={timeFilter} 
         onFilterChange={setTimeFilter}
       />
-
-            <View style={styles.statsGrid}>
-        <View style={styles.statsRow}>
-          <StatsCard
-            title="Toplam Ciro"
-            value={formatCurrency(stats.totalRevenue)}
-            icon="account-balance-wallet"
-            color="#4caf50"
-          />
-          <StatsCard
-            title="Malzeme Gideri"
-            value={formatCurrency(stats.totalCost)}
-            icon="shopping-cart"
-            color="#ff9800"
-          />
+      <View style={styles.metricsGrid}>
+        <View style={styles.metricsRow}>
+          <View style={styles.metricItem}>
+            <MetricCard
+              title="Toplam Ciro"
+              value={formatCurrency(stats.totalRevenue)}
+              icon="account-balance-wallet"
+              iconColor="white"
+              iconBackgroundColor="#4caf50"
+            />
+          </View>
+          <View style={styles.metricItem}>
+            <MetricCard
+              title="Malzeme Gideri"
+              value={formatCurrency(stats.totalCost)}
+              icon="shopping-cart"
+              iconColor="white"
+              iconBackgroundColor="#f0a94f"
+            />
+          </View>
         </View>
 
-        <View style={styles.statsRow}>
-          <StatsCard
-            title="Tamamlanan İşler"
-            value={stats.completedJobs.toString()}
-            icon="check-circle"
-            color="#2196f3"
-          />
-          <StatsCard
-            title="Bekleyen Ödemeler"
-            value={stats.pendingPayments.toString()}
-            icon="schedule"
-            color="#f44336"
-          />
+        <View style={styles.metricsRow}>
+          <View style={styles.metricItem}>
+            <MetricCard
+              title="Tamamlanan İşler"
+              value={stats.completedJobs.toString()}
+              icon="check-circle"
+              iconColor="white"
+              iconBackgroundColor="#7bb3f7"
+            />
+          </View>
+          <View style={styles.metricItem}>
+            <MetricCard
+              title="Bekleyen Ödeme"
+              value={stats.pendingPayments.toString()}
+              icon="schedule"
+              iconColor="white"
+              iconBackgroundColor="#f87171"
+            />
+          </View>
         </View>
 
-                <View style={styles.statsRow}>
-          <StatsCard
-            title="Babamla Yapılan"
-            value={formatCurrency(stats.revenueWithFather)}
-            subtitle={`Elden: ${formatCurrency(stats.withFatherPayments.elden)} | IBAN: ${formatCurrency(stats.withFatherPayments.iban)}`}
-            icon="people"
-            color="#9c27b0"
-          />
-          <StatsCard
-            title="Tek Başıma"
-            value={formatCurrency(stats.revenueWithoutFather)}
-            subtitle={`Elden: ${formatCurrency(stats.withoutFatherPayments.elden)} | IBAN: ${formatCurrency(stats.withoutFatherPayments.iban)}`}
-            icon="person"
-            color="#607d8b"
-          />
+        <View style={styles.metricsRow}>
+          <View style={styles.metricItem}>
+            <MetricCard
+              title="Babamla Yapılan"
+              value={formatCurrency(stats.revenueWithFather)}
+              subtitle={`Elden: ${formatCurrency(stats.withFatherPayments.elden)} • IBAN: ${formatCurrency(stats.withFatherPayments.iban)}`}
+              icon="people"
+              iconColor="white"
+              iconBackgroundColor="#a855f7"
+            />
+          </View>
+          <View style={styles.metricItem}>
+            <MetricCard
+              title="Tek Başıma"
+              value={formatCurrency(stats.revenueWithoutFather)}
+              subtitle={`Elden: ${formatCurrency(stats.withoutFatherPayments.elden)} • IBAN: ${formatCurrency(stats.withoutFatherPayments.iban)}`}
+              icon="person"
+              iconColor="white"
+              iconBackgroundColor="#64748b"
+            />
+          </View>
         </View>
       </View>
 
@@ -150,15 +167,18 @@ const styles = StyleSheet.create({
   subtitleText: {
     fontSize: 16,
     color: '#666',
-  },
-  statsGrid: {
+  },  metricsGrid: {
     paddingHorizontal: 16,
-    paddingBottom: 24,
+    paddingBottom: 16,
   },
-  statsRow: {
+  metricsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 16,
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  metricItem: {
+    flex: 1,
+    marginHorizontal: 6,
   },
   summary: {
     margin: 16,
