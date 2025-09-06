@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -19,13 +20,25 @@ export default function MetricCard({
   iconBackgroundColor,
   subtitle 
 }: MetricCardProps) {
+  // Dynamic font size based on value length
+  const getDynamicFontSize = (text: string) => {
+    const length = text.length;
+    if (length <= 4) return 24;      // ₺100
+    if (length <= 6) return 22;      // ₺1.000
+    if (length <= 8) return 20;      // ₺10.000
+    if (length <= 10) return 18;     // ₺100.000
+    return 16;                       // ₺1.000.000+
+  };
+
+  const dynamicFontSize = getDynamicFontSize(value);
+
   return (
     <View style={styles.card}>
       <View style={[styles.iconContainer, { backgroundColor: iconBackgroundColor }]}>
-        <MaterialIcons name={icon} size={28} color={iconColor} />
+        <MaterialIcons name={icon} size={24} color={iconColor} />
       </View>
       
-      <Text style={styles.value}>{value}</Text>
+      <Text style={[styles.value, { fontSize: dynamicFontSize }]}>{value}</Text>
       <Text style={styles.title}>{title}</Text>
       
       {subtitle && (
@@ -38,44 +51,43 @@ export default function MetricCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: 12,
+    padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 140,
-    elevation: 3,
+    minHeight: 110,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    marginBottom: 16,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    marginBottom: 8,
   },
   iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   value: {
-    fontSize: 32,
     fontWeight: 'bold',
     color: '#1a1a1a',
-    marginBottom: 8,
+    marginBottom: 4,
     textAlign: 'center',
   },
   title: {
-    fontSize: 16,
+    fontSize: 13,
     color: '#666',
     textAlign: 'center',
     fontWeight: '500',
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#999',
     textAlign: 'center',
     marginTop: 4,
-    lineHeight: 16,
+    lineHeight: 14,
   },
 });

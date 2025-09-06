@@ -167,18 +167,18 @@ const styles = StyleSheet.create({
   subtitleText: {
     fontSize: 16,
     color: '#666',
-  },  metricsGrid: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+  },    metricsGrid: {
+    paddingHorizontal: 12,
+    paddingBottom: 8,
   },
   metricsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   metricItem: {
     flex: 1,
-    marginHorizontal: 6,
+    marginHorizontal: 4,
   },
   summary: {
     margin: 16,
