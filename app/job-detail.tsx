@@ -184,28 +184,7 @@ export default function JobDetailPage() {
 
   return (
     <ScrollView style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => setIsEditing(!isEditing)}
-          >
-            <MaterialIcons 
-              name={isEditing ? "close" : "edit"} 
-              size={24} 
-              color={isEditing ? "#f44336" : "#2196f3"} 
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#f44336' }]}
-            onPress={handleDelete}
-          >
-            <MaterialIcons name="delete" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.content}>
+            <View style={styles.content}>
         {isEditing ? (
           // Edit Mode
           <View style={styles.form}>
@@ -330,6 +309,16 @@ export default function JobDetailPage() {
               <MaterialIcons name="save" size={24} color="white" />
               <Text style={styles.saveButtonText}>Değişiklikleri Kaydet</Text>
             </TouchableOpacity>
+
+            <View style={styles.actionButtonsContainer}>
+              <TouchableOpacity
+                style={[styles.bottomActionButton, styles.editButton]}
+                onPress={() => setIsEditing(false)}
+              >
+                <MaterialIcons name="close" size={24} color="white" />
+                <Text style={styles.bottomActionButtonText}>İptal</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ) : (
           // View Mode
@@ -402,6 +391,31 @@ export default function JobDetailPage() {
                 </View>
               )}
             </View>
+
+            {/* Action Buttons - Always visible at bottom */}
+            <View style={styles.actionButtonsContainer}>
+              <TouchableOpacity
+                style={[styles.bottomActionButton, styles.editButton]}
+                onPress={() => setIsEditing(!isEditing)}
+              >
+                <MaterialIcons 
+                  name={isEditing ? "close" : "edit"} 
+                  size={24} 
+                  color="white" 
+                />
+                <Text style={styles.bottomActionButtonText}>
+                  {isEditing ? 'İptal' : 'Düzenle'}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.bottomActionButton, styles.deleteButton]}
+                onPress={handleDelete}
+              >
+                <MaterialIcons name="delete" size={24} color="white" />
+                <Text style={styles.bottomActionButtonText}>Sil</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </View>
@@ -452,25 +466,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    backgroundColor: 'white',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-  },
-  actionButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+
   content: {
     flex: 1,
   },
@@ -739,6 +735,34 @@ const styles = StyleSheet.create({
   },
   alertButtonText: {
     color: 'white',
+    fontWeight: 'bold',
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    gap: 12,
+    backgroundColor: '#f5f5f5',
+  },
+  bottomActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 8,
+  },
+  editButton: {
+    backgroundColor: '#2196f3',
+  },
+  deleteButton: {
+    backgroundColor: '#f44336',
+  },
+  bottomActionButtonText: {
+    color: 'white',
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });

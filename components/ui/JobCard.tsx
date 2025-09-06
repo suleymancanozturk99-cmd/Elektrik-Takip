@@ -25,8 +25,12 @@ export default function JobCard({ job, onPress, showPaymentStatus = false }: Job
     return '#ffc107';
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('tr-TR');
+    const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return `${date.toLocaleDateString('tr-TR')} ${date.toLocaleTimeString('tr-TR', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })}`;
   };
 
   const formatCurrency = (amount: number) => {
