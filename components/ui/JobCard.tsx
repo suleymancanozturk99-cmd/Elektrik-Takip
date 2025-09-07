@@ -140,7 +140,7 @@ export default function JobCard({ job, onPress, showPaymentStatus = false }: Job
 }
 
 const styles = StyleSheet.create({
-  card: {
+    card: {
     backgroundColor: 'white',
     padding: 16,
     marginHorizontal: 16,
@@ -152,6 +152,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+    position: 'relative',
   },
   header: {
     flexDirection: 'row',

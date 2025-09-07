@@ -9,7 +9,7 @@ import { Job } from '@/types/job';
 
 export default function PendingPaymentsPage() {
   const insets = useSafeAreaInsets();
-  const { pendingPaymentJobs, loading, refreshJobs, updateJob } = useJobs();
+  const { pendingPaymentJobs, loading, refreshJobs, addPayment } = useJobs();
 
   const [paymentModal, setPaymentModal] = useState<{
     visible: boolean;
@@ -47,10 +47,11 @@ export default function PendingPaymentsPage() {
   };
 
   const handleCompletePayment = (job: Job) => {
+    const remainingAmount = job.price - (job.payments?.reduce((sum, p) => sum + p.amount, 0) || 0);
     setPaymentModal({
       visible: true,
       job: job,
-      amount: job.price.toString(),
+      amount: remainingAmount.toString(),
       paymentMethod: 'Elden'
     });
   };
@@ -69,46 +70,50 @@ export default function PendingPaymentsPage() {
       return;
     }
 
-    if (paymentAmount > job.price) {
-      showWebAlert('Uyarı', 'Ödeme tutarı iş ücretinden fazla olamaz.');
+    const totalPaid = job.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+    const remaining = job.price - totalPaid;
+
+    if (paymentAmount > remaining) {
+      showWebAlert('Uyarı', 'Ödeme tutarı kalan bakiyeden fazla olamaz.');
       return;
     }
 
     try {
-      const updatedJob: Job = {
-        ...job,
-        isPaid: true,
-        paymentMethod: paymentMethod,
-        price: paymentAmount, // Update price with actual payment amount
-        estimatedPaymentDate: undefined
-      };
+      await addPayment(job.id, {
+        amount: paymentAmount,
+        paymentMethod: paymentMethod
+      });
 
-      await updateJob(updatedJob);
       setPaymentModal({ visible: false, job: null, amount: '', paymentMethod: 'Elden' });
-      showWebAlert('Başarılı', 'Ödeme başarıyla tamamlandı.');
+      showWebAlert('Başarılı', 'Ödeme başarıyla kaydedildi.');
     } catch (error) {
       showWebAlert('Hata', 'Ödeme kaydedilirken bir hata oluştu.');
     }
   };
 
-    const renderJob = ({ item }: { item: Job }) => (
-    <View style={styles.jobContainer}>
-      <JobCard 
-        job={item} 
-        onPress={() => handleJobPress(item)}
-        showPaymentStatus={true}
-      />
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.completePaymentButton}
-          onPress={() => handleCompletePayment(item)}
-        >
-          <MaterialIcons name="check-circle" size={20} color="white" />
-          <Text style={styles.completePaymentText}>Ödeme Tamamlandı</Text>
-        </TouchableOpacity>
+  const renderJob = ({ item }: { item: Job }) => {
+    const totalPaid = item.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+    const remaining = item.price - totalPaid;
+
+    return (
+      <View style={styles.jobContainer}>
+        <JobCard 
+          job={item} 
+          onPress={() => handleJobPress(item)}
+          showPaymentStatus={true}
+        />
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.completePaymentButton}
+            onPress={() => handleCompletePayment(item)}
+          >
+            <MaterialIcons name="check-circle" size={20} color="white" />
+            <Text style={styles.completePaymentText}>Ödeme Tamamlandı</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -124,14 +129,22 @@ export default function PendingPaymentsPage() {
       transparent
       animationType="fade"
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Ödeme Tamamla</Text>
+      <TouchableOpacity 
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={() => setPaymentModal({ visible: false, job: null, amount: '', paymentMethod: 'Elden' })}
+      >
+        <TouchableOpacity 
+          style={styles.modalContent}
+          activeOpacity={1}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <Text style={styles.modalTitle}>Ödeme Ekle</Text>
           
           <View style={styles.jobInfo}>
             <Text style={styles.jobInfoTitle}>{paymentModal.job?.name}</Text>
             <Text style={styles.jobInfoPrice}>
-              Toplam Ücret: ₺{paymentModal.job?.price.toLocaleString('tr-TR')}
+              Kalan Bakiye: ₺{((paymentModal.job?.price || 0) - ((paymentModal.job?.payments || []).reduce((sum, p) => sum + p.amount, 0))).toLocaleString('tr-TR')}
             </Text>
           </View>
 
@@ -152,6 +165,7 @@ export default function PendingPaymentsPage() {
               <TouchableOpacity
                 style={[styles.methodOption, paymentModal.paymentMethod === 'Elden' && styles.selectedMethod]}
                 onPress={() => setPaymentModal(prev => ({ ...prev, paymentMethod: 'Elden' }))}
+                activeOpacity={0.7}
               >
                 <MaterialIcons name="account-balance-wallet" size={24} color={paymentModal.paymentMethod === 'Elden' ? '#2196f3' : '#666'} />
                 <Text style={[styles.methodText, paymentModal.paymentMethod === 'Elden' && styles.selectedMethodText]}>
@@ -162,6 +176,7 @@ export default function PendingPaymentsPage() {
               <TouchableOpacity
                 style={[styles.methodOption, paymentModal.paymentMethod === 'IBAN' && styles.selectedMethod]}
                 onPress={() => setPaymentModal(prev => ({ ...prev, paymentMethod: 'IBAN' }))}
+                activeOpacity={0.7}
               >
                 <MaterialIcons name="account-balance" size={24} color={paymentModal.paymentMethod === 'IBAN' ? '#2196f3' : '#666'} />
                 <Text style={[styles.methodText, paymentModal.paymentMethod === 'IBAN' && styles.selectedMethodText]}>
@@ -175,6 +190,7 @@ export default function PendingPaymentsPage() {
             <TouchableOpacity
               style={[styles.modalButton, styles.cancelModalButton]}
               onPress={() => setPaymentModal({ visible: false, job: null, amount: '', paymentMethod: 'Elden' })}
+              activeOpacity={0.7}
             >
               <Text style={styles.cancelModalButtonText}>İptal</Text>
             </TouchableOpacity>
@@ -182,12 +198,13 @@ export default function PendingPaymentsPage() {
             <TouchableOpacity
               style={[styles.modalButton, styles.confirmModalButton]}
               onPress={processPayment}
+              activeOpacity={0.7}
             >
-              <Text style={styles.confirmModalButtonText}>Tamamla</Text>
+              <Text style={styles.confirmModalButtonText}>Ödeme Ekle</Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
     </Modal>
   );
 
@@ -264,16 +281,13 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   jobContainer: {
+    position: 'relative',
     marginBottom: 8,
   },
   buttonContainer: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    left: 0,
-    alignItems: 'flex-end',
-    paddingRight: 28,
-    paddingBottom: 12,
+    bottom: 12,
+    right: 28,
     zIndex: 10,
     pointerEvents: 'box-none',
   },
@@ -289,7 +303,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-    zIndex: 11,
   },
   completePaymentText: {
     color: 'white',
