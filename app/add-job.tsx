@@ -21,12 +21,13 @@ export default function AddJobPage() {
   const insets = useSafeAreaInsets();
   const { addJob } = useJobs();
 
-  const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState({
     name: '',
     description: '',
     cost: '',
     price: '',
-    isPaid: false,
+    hasInitialPayment: false,
+    initialPaymentAmount: '',
     estimatedPaymentDate: new Date(),
     paymentMethod: 'Elden' as 'Elden' | 'IBAN',
     withFather: false,
@@ -57,13 +58,34 @@ export default function AddJobPage() {
       return;
     }
 
-    try {
-      await addJob({
-        ...formData,
+    if (formData.hasInitialPayment && !formData.initialPaymentAmount) {
+      showWebAlert('Uyarı', 'Lütfen ödenen miktarı giriniz.');
+      return;
+    }
+
+    const initialPaymentAmount = parseFloat(formData.initialPaymentAmount) || 0;
+    const totalPrice = parseFloat(formData.price) || 0;
+
+    if (formData.hasInitialPayment && initialPaymentAmount > totalPrice) {
+      showWebAlert('Uyarı', 'Ödeme miktarı toplam ücretden fazla olamaz.');
+      return;
+    }
+
+        try {
+      const jobData = {
+        name: formData.name,
+        description: formData.description,
         cost: parseFloat(formData.cost) || 0,
-        price: parseFloat(formData.price) || 0,
-        estimatedPaymentDate: !formData.isPaid ? formData.estimatedPaymentDate.toISOString() : undefined,
-      });
+        price: totalPrice,
+        withFather: formData.withFather,
+        estimatedPaymentDate: !formData.hasInitialPayment ? formData.estimatedPaymentDate.toISOString() : undefined,
+        initialPayment: formData.hasInitialPayment && initialPaymentAmount > 0 ? {
+          amount: initialPaymentAmount,
+          paymentMethod: formData.paymentMethod
+        } : undefined,
+      };
+
+      await addJob(jobData);
 
       showWebAlert('Başarılı', 'İş başarıyla eklendi.', () => {
         router.back();
@@ -173,57 +195,37 @@ export default function AddJobPage() {
         </View>
 
                         <View style={styles.switchRow}>
-          <Text style={styles.label}>Ödeme alındı mı?</Text>
+          <Text style={styles.label}>İlk ödeme alındı mı?</Text>
           <Switch
-            value={formData.isPaid}
+            value={formData.hasInitialPayment}
             onValueChange={(value) => {
               setFormData(prev => ({ 
                 ...prev, 
-                isPaid: value,
-                // Ödeme alınmadıysa varsayılan tarih set et
+                hasInitialPayment: value,
+                initialPaymentAmount: value ? prev.price : '',
                 estimatedPaymentDate: !value ? new Date() : prev.estimatedPaymentDate
               }));
             }}
             trackColor={{ false: '#767577', true: '#4caf50' }}
-            thumbColor={formData.isPaid ? '#ffffff' : '#f4f3f4'}
+            thumbColor={formData.hasInitialPayment ? '#ffffff' : '#f4f3f4'}
           />
         </View>
 
-        {formData.isPaid && (
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Ödeme Yöntemi *</Text>
-            <TouchableOpacity
-              style={styles.methodButton}
-              onPress={() => setPaymentMethodModalVisible(true)}
-            >
-              <MaterialIcons 
-                name={formData.paymentMethod === 'Elden' ? 'account-balance-wallet' : 'account-balance'} 
-                size={20} 
-                color="#666" 
-              />
-              <Text style={styles.methodButtonText}>{formData.paymentMethod}</Text>
-              <MaterialIcons name="keyboard-arrow-down" size={20} color="#666" />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {!formData.isPaid && (
+        {formData.hasInitialPayment && (
           <>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Tahmini Ödeme Tarihi</Text>
-              <TouchableOpacity
-                style={styles.dateButton}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <MaterialIcons name="calendar-today" size={20} color="#666" />
-                <Text style={styles.dateButtonText}>
-                  {formData.estimatedPaymentDate.toLocaleDateString('tr-TR')}
-                </Text>
-              </TouchableOpacity>
+              <Text style={styles.label}>Ödenen Miktar *</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.initialPaymentAmount}
+                onChangeText={(text) => setFormData(prev => ({ ...prev, initialPaymentAmount: text }))}
+                placeholder="0"
+                keyboardType="numeric"
+              />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Ödeme Yöntemi</Text>
+              <Text style={styles.label}>Ödeme Yöntemi *</Text>
               <TouchableOpacity
                 style={styles.methodButton}
                 onPress={() => setPaymentMethodModalVisible(true)}
@@ -238,6 +240,21 @@ export default function AddJobPage() {
               </TouchableOpacity>
             </View>
           </>
+        )}
+
+        {!formData.hasInitialPayment && (
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Tahmini Ödeme Tarihi</Text>
+            <TouchableOpacity
+              style={styles.dateButton}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <MaterialIcons name="calendar-today" size={20} color="#666" />
+              <Text style={styles.dateButtonText}>
+                {formData.estimatedPaymentDate.toLocaleDateString('tr-TR')}
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         <View style={styles.switchRow}>

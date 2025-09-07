@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Job, JobStats, TimeFilter } from '@/types/job';
+import { Job, JobStats, TimeFilter, Payment, JobUtils } from '@/types/job';
 
 const JOBS_STORAGE_KEY = 'electrician_jobs';
 
@@ -7,7 +7,10 @@ export class JobService {
   static async getAllJobs(): Promise<Job[]> {
     try {
       const jsonValue = await AsyncStorage.getItem(JOBS_STORAGE_KEY);
-      return jsonValue != null ? JSON.parse(jsonValue) : [];
+      const jobs = jsonValue != null ? JSON.parse(jsonValue) : [];
+      
+      // Migrate old format jobs to new payment system
+      return jobs.map((job: Job) => JobUtils.migrateJob(job));
     } catch (error) {
       console.error('Error loading jobs:', error);
       return [];
@@ -19,10 +22,13 @@ export class JobService {
       const jobs = await this.getAllJobs();
       const existingIndex = jobs.findIndex(j => j.id === job.id);
       
+      // Ensure job is properly formatted
+      const migratedJob = JobUtils.migrateJob(job);
+      
       if (existingIndex >= 0) {
-        jobs[existingIndex] = job;
+        jobs[existingIndex] = migratedJob;
       } else {
-        jobs.push(job);
+        jobs.push(migratedJob);
       }
       
       await AsyncStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(jobs));
@@ -32,7 +38,35 @@ export class JobService {
     }
   }
 
-    static async deleteJob(jobId: string): Promise<void> {
+  static async addPayment(jobId: string, payment: Payment): Promise<void> {
+    try {
+      const jobs = await this.getAllJobs();
+      const jobIndex = jobs.findIndex(j => j.id === jobId);
+      
+      if (jobIndex === -1) {
+        throw new Error('Job not found');
+      }
+      
+      const job = jobs[jobIndex];
+      if (!job.payments) {
+        job.payments = [];
+      }
+      
+      job.payments.push(payment);
+      
+      // Remove estimated payment date if job is fully paid
+      if (JobUtils.isFullyPaid(job)) {
+        job.estimatedPaymentDate = undefined;
+      }
+      
+      await AsyncStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(jobs));
+    } catch (error) {
+      console.error('Error adding payment:', error);
+      throw error;
+    }
+  }
+
+  static async deleteJob(jobId: string): Promise<void> {
     try {
       const jobs = await this.getAllJobs();
       const filteredJobs = jobs.filter(job => job.id !== jobId);
@@ -45,7 +79,8 @@ export class JobService {
 
   static async importJobs(jobs: Job[]): Promise<void> {
     try {
-      await AsyncStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(jobs));
+      const migratedJobs = jobs.map(job => JobUtils.migrateJob(job));
+      await AsyncStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(migratedJobs));
     } catch (error) {
       console.error('Error importing jobs:', error);
       throw error;
@@ -85,37 +120,51 @@ export class JobService {
     });
   }
 
-      static calculateStats(jobs: Job[]): JobStats {
-    const paidJobs = jobs.filter(job => job.isPaid);
-    const withFatherPaidJobs = paidJobs.filter(job => job.withFather);
-    const withoutFatherPaidJobs = paidJobs.filter(job => !job.withFather);
+  static calculateStats(jobs: Job[]): JobStats {
+    const fullyPaidJobs = jobs.filter(job => JobUtils.isFullyPaid(job));
+    const withFatherPaidJobs = fullyPaidJobs.filter(job => job.withFather);
+    const withoutFatherPaidJobs = fullyPaidJobs.filter(job => !job.withFather);
+    
+    // Calculate totals from all payments
+    const allPayments = jobs.flatMap(job => job.payments || []);
+    const eldenPayments = allPayments.filter(p => p.paymentMethod === 'Elden');
+    const ibanPayments = allPayments.filter(p => p.paymentMethod === 'IBAN');
+    
+    // Calculate payments by father presence
+    const withFatherPayments = jobs
+      .filter(job => job.withFather)
+      .flatMap(job => job.payments || []);
+    
+    const withoutFatherPayments = jobs
+      .filter(job => !job.withFather)
+      .flatMap(job => job.payments || []);
     
     return {
-      totalRevenue: paidJobs.reduce((sum, job) => sum + job.price, 0),
+      totalRevenue: allPayments.reduce((sum, payment) => sum + payment.amount, 0),
       totalCost: jobs.reduce((sum, job) => sum + job.cost, 0),
-      completedJobs: paidJobs.length,
-      pendingPayments: jobs.filter(job => !job.isPaid).length,
-      revenueWithFather: withFatherPaidJobs.reduce((sum, job) => sum + job.price, 0),
-      revenueWithoutFather: withoutFatherPaidJobs.reduce((sum, job) => sum + job.price, 0),
+      completedJobs: fullyPaidJobs.length,
+      pendingPayments: jobs.filter(job => !JobUtils.isFullyPaid(job)).length,
+      revenueWithFather: withFatherPayments.reduce((sum, payment) => sum + payment.amount, 0),
+      revenueWithoutFather: withoutFatherPayments.reduce((sum, payment) => sum + payment.amount, 0),
       paymentMethods: {
-        elden: paidJobs.filter(job => job.paymentMethod === 'Elden').reduce((sum, job) => sum + job.price, 0),
-        iban: paidJobs.filter(job => job.paymentMethod === 'IBAN').reduce((sum, job) => sum + job.price, 0),
+        elden: eldenPayments.reduce((sum, payment) => sum + payment.amount, 0),
+        iban: ibanPayments.reduce((sum, payment) => sum + payment.amount, 0),
       },
       withFatherPayments: {
-        elden: withFatherPaidJobs.filter(job => job.paymentMethod === 'Elden').reduce((sum, job) => sum + job.price, 0),
-        iban: withFatherPaidJobs.filter(job => job.paymentMethod === 'IBAN').reduce((sum, job) => sum + job.price, 0),
+        elden: withFatherPayments.filter(p => p.paymentMethod === 'Elden').reduce((sum, p) => sum + p.amount, 0),
+        iban: withFatherPayments.filter(p => p.paymentMethod === 'IBAN').reduce((sum, p) => sum + p.amount, 0),
       },
       withoutFatherPayments: {
-        elden: withoutFatherPaidJobs.filter(job => job.paymentMethod === 'Elden').reduce((sum, job) => sum + job.price, 0),
-        iban: withoutFatherPaidJobs.filter(job => job.paymentMethod === 'IBAN').reduce((sum, job) => sum + job.price, 0),
+        elden: withoutFatherPayments.filter(p => p.paymentMethod === 'Elden').reduce((sum, p) => sum + p.amount, 0),
+        iban: withoutFatherPayments.filter(p => p.paymentMethod === 'IBAN').reduce((sum, p) => sum + p.amount, 0),
       },
     };
   }
 
   static getPendingPaymentJobs(jobs: Job[]): Job[] {
-    const unpaidJobs = jobs.filter(job => !job.isPaid);
+    const partiallyPaidJobs = jobs.filter(job => !JobUtils.isFullyPaid(job));
     
-    return unpaidJobs.sort((a, b) => {
+    return partiallyPaidJobs.sort((a, b) => {
       if (!a.estimatedPaymentDate) return 1;
       if (!b.estimatedPaymentDate) return -1;
       return new Date(a.estimatedPaymentDate).getTime() - new Date(b.estimatedPaymentDate).getTime();
@@ -123,14 +172,14 @@ export class JobService {
   }
 
   static isPaymentOverdue(job: Job): boolean {
-    if (!job.estimatedPaymentDate || job.isPaid) return false;
+    if (!job.estimatedPaymentDate || JobUtils.isFullyPaid(job)) return false;
     const today = new Date();
     const paymentDate = new Date(job.estimatedPaymentDate);
     return paymentDate < today;
   }
 
   static isPaymentDueSoon(job: Job): boolean {
-    if (!job.estimatedPaymentDate || job.isPaid) return false;
+    if (!job.estimatedPaymentDate || JobUtils.isFullyPaid(job)) return false;
     const today = new Date();
     const paymentDate = new Date(job.estimatedPaymentDate);
     const diffTime = paymentDate.getTime() - today.getTime();

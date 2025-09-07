@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Job } from '@/types/job';
+import { Job, JobUtils } from '@/types/job';
 import { JobService } from '@/services/jobService';
 
 interface JobCardProps {
@@ -11,21 +12,26 @@ interface JobCardProps {
 }
 
 export default function JobCard({ job, onPress, showPaymentStatus = false }: JobCardProps) {
+  const totalPaid = JobUtils.getTotalPaid(job);
+  const remainingBalance = JobUtils.getRemainingBalance(job);
+  const isFullyPaid = JobUtils.isFullyPaid(job);
+  const lastPaymentMethod = JobUtils.getLastPaymentMethod(job);
+
   const getCardColor = () => {
-    if (!showPaymentStatus || job.isPaid) return '#fff';
+    if (!showPaymentStatus || isFullyPaid) return '#fff';
     if (JobService.isPaymentOverdue(job)) return '#ffebee'; // Kırmızı
     if (JobService.isPaymentDueSoon(job)) return '#fff8e1'; // Sarı
     return '#fff3e0'; // Turuncu
   };
 
   const getBorderColor = () => {
-    if (!showPaymentStatus || job.isPaid) return '#e0e0e0';
+    if (!showPaymentStatus || isFullyPaid) return '#e0e0e0';
     if (JobService.isPaymentOverdue(job)) return '#f44336';
     if (JobService.isPaymentDueSoon(job)) return '#ff9800';
     return '#ffc107';
   };
 
-    const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return `${date.toLocaleDateString('tr-TR')} ${date.toLocaleTimeString('tr-TR', { 
       hour: '2-digit', 
@@ -47,22 +53,22 @@ export default function JobCard({ job, onPress, showPaymentStatus = false }: Job
     >
       <View style={styles.header}>
         <Text style={styles.jobName}>{job.name}</Text>
-                <View style={styles.statusContainer}>
+        <View style={styles.statusContainer}>
           {job.withFather && (
             <MaterialIcons name="people" size={16} color="#2196f3" style={styles.statusIcon} />
           )}
-          {job.isPaid && (
+          {lastPaymentMethod && (
             <MaterialIcons 
-              name={job.paymentMethod === 'Elden' ? 'account-balance-wallet' : 'account-balance'} 
+              name={lastPaymentMethod === 'Elden' ? 'account-balance-wallet' : 'account-balance'} 
               size={16} 
-              color="#4caf50" 
+              color={isFullyPaid ? "#4caf50" : "#ff9800"} 
               style={styles.statusIcon}
             />
           )}
           <MaterialIcons 
-            name={job.isPaid ? "check-circle" : "schedule"} 
+            name={isFullyPaid ? "check-circle" : "schedule"} 
             size={16} 
-            color={job.isPaid ? "#4caf50" : "#ff9800"} 
+            color={isFullyPaid ? "#4caf50" : "#ff9800"} 
           />
         </View>
       </View>
@@ -80,22 +86,52 @@ export default function JobCard({ job, onPress, showPaymentStatus = false }: Job
         </Text>
       </View>
 
+      {/* Payment Progress */}
+      <View style={styles.paymentProgress}>
+        <View style={styles.progressBar}>
+          <View 
+            style={[
+              styles.progressFill, 
+              { 
+                width: `${job.price > 0 ? (totalPaid / job.price) * 100 : 0}%`,
+                backgroundColor: isFullyPaid ? '#4caf50' : '#ff9800'
+              }
+            ]} 
+          />
+        </View>
+        <Text style={styles.paymentText}>
+          {isFullyPaid ? 
+            'Tamamen Ödendi' : 
+            `${formatCurrency(totalPaid)} / ${formatCurrency(job.price)}`
+          }
+        </Text>
+      </View>
+
       <View style={styles.footer}>
         <Text style={styles.date}>
           {formatDate(job.createdAt)}
         </Text>
         <Text style={[styles.paymentStatus, { 
-          color: job.isPaid ? '#4caf50' : '#ff9800' 
+          color: isFullyPaid ? '#4caf50' : '#ff9800' 
         }]}>
-          {job.isPaid ? 'Ödendi' : 'Bekliyor'}
+          {isFullyPaid ? 'Tamamen Ödendi' : 
+           totalPaid > 0 ? 'Kısmi Ödeme' : 'Ödeme Bekliyor'}
         </Text>
       </View>
 
-      {showPaymentStatus && !job.isPaid && job.estimatedPaymentDate && (
+      {showPaymentStatus && !isFullyPaid && job.estimatedPaymentDate && (
         <View style={styles.paymentDate}>
           <MaterialIcons name="schedule" size={14} color="#666" />
           <Text style={styles.paymentDateText}>
             {`Tahmini: ${formatDate(job.estimatedPaymentDate)}`}
+          </Text>
+        </View>
+      )}
+
+      {!isFullyPaid && remainingBalance > 0 && (
+        <View style={styles.remainingBalance}>
+          <Text style={styles.remainingText}>
+            {`Kalan: ${formatCurrency(remainingBalance)}`}
           </Text>
         </View>
       )}
@@ -145,7 +181,7 @@ const styles = StyleSheet.create({
   amounts: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   price: {
     fontSize: 18,
@@ -155,6 +191,25 @@ const styles = StyleSheet.create({
   cost: {
     fontSize: 14,
     color: '#ff9800',
+  },
+  paymentProgress: {
+    marginBottom: 8,
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  paymentText: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
   },
   footer: {
     flexDirection: 'row',
@@ -181,5 +236,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginLeft: 4,
+  },
+  remainingBalance: {
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  remainingText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#f44336',
   },
 });
