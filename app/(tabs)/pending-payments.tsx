@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, Text, RefreshControl, TouchableOpacity, Modal, TextInput, Alert, Platform } from 'react-native';
+import { View, StyleSheet, FlatList, Text, RefreshControl, TouchableOpacity, Platform, Modal } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -9,19 +9,7 @@ import { Job } from '@/types/job';
 
 export default function PendingPaymentsPage() {
   const insets = useSafeAreaInsets();
-  const { pendingPaymentJobs, loading, refreshJobs, addPayment } = useJobs();
-
-  const [paymentModal, setPaymentModal] = useState<{
-    visible: boolean;
-    job: Job | null;
-    amount: string;
-    paymentMethod: 'Elden' | 'IBAN';
-  }>({
-    visible: false,
-    job: null,
-    amount: '',
-    paymentMethod: 'Elden'
-  });
+  const { pendingPaymentJobs, loading, refreshJobs } = useJobs();
 
   // Web Alert Handler
   const [alertConfig, setAlertConfig] = useState<{
@@ -35,7 +23,7 @@ export default function PendingPaymentsPage() {
     if (Platform.OS === 'web') {
       setAlertConfig({ visible: true, title, message, onOk });
     } else {
-      Alert.alert(title, message, onOk ? [{ text: 'Tamam', onPress: onOk }] : undefined);
+      // Alert is not used since we don't need it for navigation
     }
   };
 
@@ -46,49 +34,11 @@ export default function PendingPaymentsPage() {
     });
   };
 
-  const handleCompletePayment = (job: Job) => {
-    const remainingAmount = job.price - (job.payments?.reduce((sum, p) => sum + p.amount, 0) || 0);
-    setPaymentModal({
-      visible: true,
-      job: job,
-      amount: remainingAmount.toString(),
-      paymentMethod: 'Elden'
+  const handleAddPayment = (job: Job) => {
+    router.push({
+      pathname: '/add-payment',
+      params: { jobId: job.id }
     });
-  };
-
-  const processPayment = async () => {
-    const { job, amount, paymentMethod } = paymentModal;
-    
-    if (!job || !amount.trim()) {
-      showWebAlert('Uyarı', 'Lütfen ödeme tutarını giriniz.');
-      return;
-    }
-
-    const paymentAmount = parseFloat(amount);
-    if (isNaN(paymentAmount) || paymentAmount <= 0) {
-      showWebAlert('Uyarı', 'Lütfen geçerli bir tutar giriniz.');
-      return;
-    }
-
-    const totalPaid = job.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
-    const remaining = job.price - totalPaid;
-
-    if (paymentAmount > remaining) {
-      showWebAlert('Uyarı', 'Ödeme tutarı kalan bakiyeden fazla olamaz.');
-      return;
-    }
-
-    try {
-      await addPayment(job.id, {
-        amount: paymentAmount,
-        paymentMethod: paymentMethod
-      });
-
-      setPaymentModal({ visible: false, job: null, amount: '', paymentMethod: 'Elden' });
-      showWebAlert('Başarılı', 'Ödeme başarıyla kaydedildi.');
-    } catch (error) {
-      showWebAlert('Hata', 'Ödeme kaydedilirken bir hata oluştu.');
-    }
   };
 
   const renderJob = ({ item }: { item: Job }) => {
@@ -102,10 +52,11 @@ export default function PendingPaymentsPage() {
           onPress={() => handleJobPress(item)}
           showPaymentStatus={true}
         />
-        <View style={styles.buttonContainer}>
+        <View style={styles.buttonRow}>
           <TouchableOpacity
             style={styles.completePaymentButton}
-            onPress={() => handleCompletePayment(item)}
+            onPress={() => handleAddPayment(item)}
+            activeOpacity={0.7}
           >
             <MaterialIcons name="check-circle" size={20} color="white" />
             <Text style={styles.completePaymentText}>Ödeme Tamamlandı</Text>
@@ -121,91 +72,6 @@ export default function PendingPaymentsPage() {
         Bekleyen ödeme bulunmuyor 🎉
       </Text>
     </View>
-  );
-
-  const PaymentMethodModal = () => (
-    <Modal
-      visible={paymentModal.visible}
-      transparent
-      animationType="fade"
-    >
-      <TouchableOpacity 
-        style={styles.modalOverlay}
-        activeOpacity={1}
-        onPress={() => setPaymentModal({ visible: false, job: null, amount: '', paymentMethod: 'Elden' })}
-      >
-        <TouchableOpacity 
-          style={styles.modalContent}
-          activeOpacity={1}
-          onPress={(e) => e.stopPropagation()}
-        >
-          <Text style={styles.modalTitle}>Ödeme Ekle</Text>
-          
-          <View style={styles.jobInfo}>
-            <Text style={styles.jobInfoTitle}>{paymentModal.job?.name}</Text>
-            <Text style={styles.jobInfoPrice}>
-              Kalan Bakiye: ₺{((paymentModal.job?.price || 0) - ((paymentModal.job?.payments || []).reduce((sum, p) => sum + p.amount, 0))).toLocaleString('tr-TR')}
-            </Text>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Ödeme Tutarı</Text>
-            <TextInput
-              style={styles.amountInput}
-              value={paymentModal.amount}
-              onChangeText={(text) => setPaymentModal(prev => ({ ...prev, amount: text }))}
-              placeholder="0"
-              keyboardType="numeric"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Ödeme Yöntemi</Text>
-            <View style={styles.paymentMethods}>
-              <TouchableOpacity
-                style={[styles.methodOption, paymentModal.paymentMethod === 'Elden' && styles.selectedMethod]}
-                onPress={() => setPaymentModal(prev => ({ ...prev, paymentMethod: 'Elden' }))}
-                activeOpacity={0.7}
-              >
-                <MaterialIcons name="account-balance-wallet" size={24} color={paymentModal.paymentMethod === 'Elden' ? '#2196f3' : '#666'} />
-                <Text style={[styles.methodText, paymentModal.paymentMethod === 'Elden' && styles.selectedMethodText]}>
-                  Elden
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.methodOption, paymentModal.paymentMethod === 'IBAN' && styles.selectedMethod]}
-                onPress={() => setPaymentModal(prev => ({ ...prev, paymentMethod: 'IBAN' }))}
-                activeOpacity={0.7}
-              >
-                <MaterialIcons name="account-balance" size={24} color={paymentModal.paymentMethod === 'IBAN' ? '#2196f3' : '#666'} />
-                <Text style={[styles.methodText, paymentModal.paymentMethod === 'IBAN' && styles.selectedMethodText]}>
-                  IBAN
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.modalActions}>
-            <TouchableOpacity
-              style={[styles.modalButton, styles.cancelModalButton]}
-              onPress={() => setPaymentModal({ visible: false, job: null, amount: '', paymentMethod: 'Elden' })}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.cancelModalButtonText}>İptal</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.modalButton, styles.confirmModalButton]}
-              onPress={processPayment}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.confirmModalButtonText}>Ödeme Ekle</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </TouchableOpacity>
-    </Modal>
   );
 
   return (
@@ -229,8 +95,6 @@ export default function PendingPaymentsPage() {
           <RefreshControl refreshing={loading} onRefresh={refreshJobs} />
         }
       />
-
-      <PaymentMethodModal />
 
       {/* Web Alert Modal */}
       {Platform.OS === 'web' && (
@@ -281,34 +145,31 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   jobContainer: {
-    position: 'relative',
-    marginBottom: 8,
+    marginBottom: 16,
   },
-  buttonContainer: {
-    position: 'absolute',
-    bottom: 12,
-    right: 28,
-    zIndex: 10,
-    pointerEvents: 'box-none',
+  buttonRow: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
   completePaymentButton: {
     backgroundColor: '#4caf50',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    elevation: 6,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   completePaymentText: {
     color: 'white',
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: 'bold',
-    marginLeft: 4,
+    marginLeft: 8,
   },
   emptyState: {
     flex: 1,
@@ -320,119 +181,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#666',
     textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 24,
-    minWidth: 320,
-    maxWidth: 400,
-    margin: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  jobInfo: {
-    backgroundColor: '#f8f9fa',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-  jobInfoTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  jobInfoPrice: {
-    fontSize: 14,
-    color: '#2196f3',
-    fontWeight: '500',
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 8,
-  },
-  amountInput: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: 'white',
-  },
-  paymentMethods: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  methodOption: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    backgroundColor: 'white',
-  },
-  selectedMethod: {
-    borderColor: '#2196f3',
-    backgroundColor: '#e3f2fd',
-  },
-  methodText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 8,
-    fontWeight: '500',
-  },
-  selectedMethodText: {
-    color: '#2196f3',
-    fontWeight: 'bold',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelModalButton: {
-    backgroundColor: '#f5f5f5',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  confirmModalButton: {
-    backgroundColor: '#4caf50',
-  },
-  cancelModalButtonText: {
-    color: '#666',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  confirmModalButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
   alertOverlay: {
     flex: 1,
