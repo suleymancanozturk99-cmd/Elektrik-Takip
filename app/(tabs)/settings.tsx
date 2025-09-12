@@ -19,13 +19,12 @@ import { useJobs } from '@/hooks/useJobs';
 
 export default function SettingsPage() {
   const insets = useSafeAreaInsets();
-    const { jobs, importJobs, loading, manualBackup, getCurrentDeviceId, importJobsFromDevice } = useJobs();
-  const { user, logout } = useAuth();
+  const { jobs, importJobs, loading, manualBackup, getCurrentDeviceId, importJobsFromDevice } = useJobs();
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [backupLoading, setBackupLoading] = useState(false);
   const [deviceImportLoading, setDeviceImportLoading] = useState(false);
-  const [sourceEmail, setSourceEmail] = useState('');
+  const [sourceDeviceId, setSourceDeviceId] = useState('');
 
   // Web Alert Handler
   const [alertConfig, setAlertConfig] = useState<{
@@ -56,38 +55,23 @@ export default function SettingsPage() {
     }
   };
 
-  const handleImportFromUser = async () => {
-    if (!sourceEmail.trim()) {
-      showWebAlert('Uyarı', 'Lütfen kaynak email adresini girin.');
+  const handleImportFromDevice = async () => {
+    if (!sourceDeviceId.trim()) {
+      showWebAlert('Uyarı', 'Lütfen kaynak cihaz ID\'sini girin.');
       return;
     }
 
     try {
       setDeviceImportLoading(true);
-      await importJobsFromDevice(sourceEmail.trim());
+      await importJobsFromDevice(sourceDeviceId.trim());
       showWebAlert('Başarılı', 'Veriler başarıyla aktarıldı.');
-      setSourceEmail('');
+      setSourceDeviceId('');
     } catch (error) {
-      console.error('User import error:', error);
-      showWebAlert('Hata', 'Veri aktarımında hata oluştu. Email adresini kontrol edin.');
+      console.error('Device import error:', error);
+      showWebAlert('Hata', 'Veri aktarımında hata oluştu. Cihaz ID\'sini kontrol edin.');
     } finally {
       setDeviceImportLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    showWebAlert(
-      'Çıkış Yap',
-      'Çıkış yapmak istediğinizden emin misiniz?',
-      async () => {
-        try {
-          await logout();
-          showWebAlert('Başarılı', 'Çıkış yapıldı.');
-        } catch (error) {
-          showWebAlert('Hata', 'Çıkış yapılırken bir hata oluştu.');
-        }
-      }
-    );
   };
 
   const exportToJSON = async () => {
@@ -264,7 +248,7 @@ export default function SettingsPage() {
     }
   };
 
-  const currentUserEmail = getCurrentDeviceId();
+  const currentDeviceId = getCurrentDeviceId();
 
   return (
     <ScrollView style={[styles.container, { paddingTop: insets.top }]}>
@@ -292,50 +276,40 @@ export default function SettingsPage() {
           </TouchableOpacity>
         </View>
 
-        {/* User Management Section */}
+        {/* Device Management Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>👤 Kullanıcı Yönetimi</Text>
+          <Text style={styles.sectionTitle}>📱 Cihaz Yönetimi</Text>
           <Text style={styles.sectionDescription}>
-            Mevcut kullanıcı ve diğer kullanıcılardan veri aktarımı
+            Bu cihazın ID'si ve diğer cihazlardan veri aktarımı
           </Text>
 
           <View style={styles.deviceIdContainer}>
-            <MaterialIcons name="email" size={20} color="#2196f3" />
+            <MaterialIcons name="smartphone" size={20} color="#2196f3" />
             <View style={styles.deviceIdContent}>
-              <Text style={styles.deviceIdLabel}>Mevcut Email:</Text>
-              <Text style={styles.deviceIdValue}>{currentUserEmail}</Text>
+              <Text style={styles.deviceIdLabel}>Bu Cihazın ID'si:</Text>
+              <Text style={styles.deviceIdValue}>{currentDeviceId}</Text>
             </View>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Başka Kullanıcıdan Veri Aktar:</Text>
+            <Text style={styles.inputLabel}>Başka Cihazdan Veri Aktar:</Text>
             <TextInput
               style={styles.deviceIdInput}
-              value={sourceEmail}
-              onChangeText={setSourceEmail}
-              placeholder="Kaynak email adresini girin"
+              value={sourceDeviceId}
+              onChangeText={setSourceDeviceId}
+              placeholder="Kaynak cihaz ID'sini girin"
               placeholderTextColor="#999"
-              keyboardType="email-address"
-              autoCapitalize="none"
             />
             <TouchableOpacity
-              style={[styles.importDeviceButton, !sourceEmail.trim() && styles.disabledButton]}
-              onPress={handleImportFromUser}
-              disabled={deviceImportLoading || !sourceEmail.trim()}
+              style={[styles.importDeviceButton, !sourceDeviceId.trim() && styles.disabledButton]}
+              onPress={handleImportFromDevice}
+              disabled={deviceImportLoading || !sourceDeviceId.trim()}
             >
               <MaterialIcons name="get-app" size={20} color="white" />
               <Text style={styles.importDeviceButtonText}>Veri Aktar</Text>
               {deviceImportLoading && <MaterialIcons name="refresh" size={16} color="white" />}
             </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={handleLogout}
-          >
-            <MaterialIcons name="logout" size={20} color="white" />
-            <Text style={styles.logoutButtonText}>Çıkış Yap</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Local Backup Section */}
@@ -620,21 +594,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     flex: 1,
     lineHeight: 16,
-  },
-  logoutButton: {
-    backgroundColor: '#f44336',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 16,
-    gap: 8,
-  },
-  logoutButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
   },
   alertOverlay: {
     flex: 1,

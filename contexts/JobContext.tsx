@@ -2,7 +2,6 @@ import React, { createContext, ReactNode, useState, useEffect } from 'react';
 import { Job, JobStats, TimeFilter, Payment, JobUtils } from '@/types/job';
 import { JobService, SearchFilter } from '@/services/jobService';
 import { FirebaseJobService } from '@/services/firebaseJobService';
-import { useAuth } from '@/hooks/useAuth';
 
 interface JobContextType {
   jobs: Job[];
@@ -40,26 +39,15 @@ export function JobProvider({ children }: { children: ReactNode }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFilter, setSearchFilter] = useState<SearchFilter>('all');
 
-  const { user, isAuthenticated } = useAuth();
-
-  // Firebase real-time listener - only when authenticated
+  // Firebase real-time listener
   useEffect(() => {
-    if (!isAuthenticated || !user) {
-      setJobs([]);
-      setLoading(false);
-      return;
-    }
-
-    // Set user email for Firebase operations
-    FirebaseJobService.setUserEmail(user.email);
-
     const unsubscribe = FirebaseJobService.subscribeToJobs((firebaseJobs) => {
       setJobs(firebaseJobs);
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [isAuthenticated, user]);
+  }, []);
 
   const addJob = async (jobData: Omit<Job, 'id' | 'createdAt' | 'payments'> & { 
     initialPayment?: { amount: number; paymentMethod: 'Elden' | 'IBAN' } 
@@ -134,19 +122,19 @@ export function JobProvider({ children }: { children: ReactNode }) {
     await FirebaseJobService.manualBackup();
   };
 
-  const getCurrentUserEmail = () => {
-    return user?.email || '';
+  const getCurrentDeviceId = () => {
+    return FirebaseJobService.getCurrentDeviceId();
   };
 
-  const importJobsFromUser = async (sourceEmail: string) => {
+  const importJobsFromDevice = async (deviceId: string) => {
     try {
-      const jobs = await FirebaseJobService.importJobsFromUser(sourceEmail);
-      // Import all jobs from the other user
+      const jobs = await FirebaseJobService.importJobsFromDevice(deviceId);
+      // Import all jobs from the other device
       for (const job of jobs) {
         await FirebaseJobService.saveJob(job);
       }
     } catch (error) {
-      console.error('Error importing jobs from user:', error);
+      console.error('Error importing jobs from device:', error);
       throw error;
     }
   };
@@ -181,8 +169,8 @@ export function JobProvider({ children }: { children: ReactNode }) {
       refreshJobs,
       importJobs,
       manualBackup,
-      getCurrentDeviceId: getCurrentUserEmail,
-      importJobsFromDevice: importJobsFromUser,
+      getCurrentDeviceId,
+      importJobsFromDevice,
     }}>
       {children}
     </JobContext.Provider>
