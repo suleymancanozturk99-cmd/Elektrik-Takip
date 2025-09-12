@@ -1,6 +1,6 @@
 import React, { createContext, ReactNode, useState, useEffect } from 'react';
 import { Job, JobStats, TimeFilter, Payment, JobUtils } from '@/types/job';
-import { JobService } from '@/services/jobService';
+import { JobService, SearchFilter } from '@/services/jobService';
 import { FirebaseJobService } from '@/services/firebaseJobService';
 
 interface JobContextType {
@@ -10,7 +10,13 @@ interface JobContextType {
   filteredJobs: Job[];
   pendingPaymentJobs: Job[];
   loading: boolean;
+  searchQuery: string;
+  searchFilter: SearchFilter;
+  searchResults: Job[];
+  searchResultCount: number;
   setTimeFilter: (filter: TimeFilter) => void;
+  setSearchQuery: (query: string) => void;
+  setSearchFilter: (filter: SearchFilter) => void;
   addJob: (job: Omit<Job, 'id' | 'createdAt' | 'payments'> & { 
     initialPayment?: { amount: number; paymentMethod: 'Elden' | 'IBAN' } 
   }) => Promise<void>;
@@ -30,6 +36,8 @@ export function JobProvider({ children }: { children: ReactNode }) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all-time');
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchFilter, setSearchFilter] = useState<SearchFilter>('all');
 
   // Firebase real-time listener
   useEffect(() => {
@@ -134,6 +142,10 @@ export function JobProvider({ children }: { children: ReactNode }) {
   const filteredJobs = JobService.filterJobsByTime(jobs, timeFilter);
   const stats = JobService.calculateStats(filteredJobs);
   const pendingPaymentJobs = JobService.getPendingPaymentJobs(jobs);
+  
+  // Search functionality
+  const searchResults = JobService.searchJobs(filteredJobs, searchQuery, searchFilter);
+  const searchResultCount = searchResults.length;
 
   return (
     <JobContext.Provider value={{
@@ -143,7 +155,13 @@ export function JobProvider({ children }: { children: ReactNode }) {
       filteredJobs,
       pendingPaymentJobs,
       loading,
+      searchQuery,
+      searchFilter,
+      searchResults,
+      searchResultCount,
       setTimeFilter,
+      setSearchQuery,
+      setSearchFilter,
       addJob,
       updateJob,
       deleteJob,
