@@ -1,7 +1,6 @@
 import React, { createContext, ReactNode, useState, useEffect } from 'react';
 import { Job, JobStats, TimeFilter, Payment, JobUtils } from '@/types/job';
 import { JobService } from '@/services/jobService';
-import { FirebaseJobService } from '@/services/firebaseJobService';
 
 interface JobContextType {
   jobs: Job[];
@@ -19,36 +18,39 @@ interface JobContextType {
   addPayment: (jobId: string, payment: Omit<Payment, 'id' | 'paymentDate'>) => Promise<void>;
   refreshJobs: () => Promise<void>;
   importJobs: (jobs: Job[]) => Promise<void>;
-  manualBackup: () => Promise<void>;
-  getCurrentDeviceId: () => string;
-  importJobsFromDevice: (deviceId: string) => Promise<void>;
 }
 
 export const JobContext = createContext<JobContextType | undefined>(undefined);
 
 export function JobProvider({ children }: { children: ReactNode }) {
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all-time');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('monthly');
   const [loading, setLoading] = useState(true);
 
-  // Firebase real-time listener
-  useEffect(() => {
-    const unsubscribe = FirebaseJobService.subscribeToJobs((firebaseJobs) => {
-      setJobs(firebaseJobs);
+  const loadJobs = async () => {
+    try {
+      setLoading(true);
+      const loadedJobs = await JobService.getAllJobs();
+      setJobs(loadedJobs);
+    } catch (error) {
+      console.error('Error loading jobs:', error);
+    } finally {
       setLoading(false);
-    });
+    }
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    loadJobs();
   }, []);
 
-  const addJob = async (jobData: Omit<Job, 'id' | 'createdAt' | 'payments'> & { 
+    const addJob = async (jobData: Omit<Job, 'id' | 'createdAt' | 'payments'> & { 
     initialPayment?: { amount: number; paymentMethod: 'Elden' | 'IBAN' } 
   }) => {
     const newJob: Job = {
       ...jobData,
       id: Date.now().toString(),
       createdAt: new Date().toISOString(),
-      payments: [],
+      payments: [], // Initialize empty payments array
     };
     
     // Add initial payment if provided
@@ -66,18 +68,18 @@ export function JobProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    // Save to Firebase (real-time listener will update local state)
-    await FirebaseJobService.saveJob(newJob);
+    await JobService.saveJob(newJob);
+    setJobs(prev => [...prev, newJob]);
   };
 
   const updateJob = async (updatedJob: Job) => {
-    await FirebaseJobService.saveJob(updatedJob);
-    // Real-time listener will update local state automatically
+    await JobService.saveJob(updatedJob);
+    setJobs(prev => prev.map(job => job.id === updatedJob.id ? updatedJob : job));
   };
 
   const deleteJob = async (jobId: string) => {
-    await FirebaseJobService.deleteJob(jobId);
-    // Real-time listener will update local state automatically
+    await JobService.deleteJob(jobId);
+    setJobs(prev => prev.filter(job => job.id !== jobId));
   };
 
   const addPayment = async (jobId: string, paymentData: Omit<Payment, 'id' | 'paymentDate'>) => {
@@ -87,46 +89,36 @@ export function JobProvider({ children }: { children: ReactNode }) {
       paymentDate: new Date().toISOString(),
     };
     
-    await FirebaseJobService.addPayment(jobId, payment);
-    // Real-time listener will update local state automatically
+    await JobService.addPayment(jobId, payment);
+    
+    // Update local state
+    setJobs(prev => prev.map(job => {
+      if (job.id === jobId) {
+        const updatedJob = { ...job };
+        if (!updatedJob.payments) updatedJob.payments = [];
+        updatedJob.payments.push(payment);
+        
+        // Remove estimated payment date if fully paid
+        if (JobUtils.isFullyPaid(updatedJob)) {
+          updatedJob.estimatedPaymentDate = undefined;
+        }
+        
+        return updatedJob;
+      }
+      return job;
+    }));
   };
 
   const refreshJobs = async () => {
-    // Firebase real-time listener handles this automatically
-    setLoading(true);
-    setTimeout(() => setLoading(false), 500); // Brief loading indicator
+    await loadJobs();
   };
 
   const importJobs = async (importedJobs: Job[]) => {
     try {
-      // Save each job to Firebase
-      for (const job of importedJobs) {
-        await FirebaseJobService.saveJob(job);
-      }
-      // Real-time listener will update local state automatically
+      await JobService.importJobs(importedJobs);
+      setJobs(importedJobs);
     } catch (error) {
       console.error('Error importing jobs:', error);
-      throw error;
-    }
-  };
-
-  const manualBackup = async () => {
-    await FirebaseJobService.manualBackup();
-  };
-
-  const getCurrentDeviceId = () => {
-    return FirebaseJobService.getCurrentDeviceId();
-  };
-
-  const importJobsFromDevice = async (deviceId: string) => {
-    try {
-      const jobs = await FirebaseJobService.importJobsFromDevice(deviceId);
-      // Import all jobs from the other device
-      for (const job of jobs) {
-        await FirebaseJobService.saveJob(job);
-      }
-    } catch (error) {
-      console.error('Error importing jobs from device:', error);
       throw error;
     }
   };
@@ -150,9 +142,6 @@ export function JobProvider({ children }: { children: ReactNode }) {
       addPayment,
       refreshJobs,
       importJobs,
-      manualBackup,
-      getCurrentDeviceId,
-      importJobsFromDevice,
     }}>
       {children}
     </JobContext.Provider>

@@ -96,7 +96,7 @@ export class JobService {
     }
   }
 
-    static filterJobsByTime(jobs: Job[], filter: TimeFilter): Job[] {
+  static filterJobsByTime(jobs: Job[], filter: TimeFilter): Job[] {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
@@ -114,20 +114,23 @@ export class JobService {
         case 'monthly':
           return jobDate.getMonth() === now.getMonth() && 
                  jobDate.getFullYear() === now.getFullYear();
-        case 'all-time':
-          return true; // Tüm zamanlar için tüm işleri dahil et
         default:
           return true;
       }
     });
   }
+
   static calculateStats(jobs: Job[]): JobStats {
-    // Kısmi ödemeler de dahil olmak üzere TÜM ödemeleri hesapla
+    const fullyPaidJobs = jobs.filter(job => JobUtils.isFullyPaid(job));
+    const withFatherPaidJobs = fullyPaidJobs.filter(job => job.withFather);
+    const withoutFatherPaidJobs = fullyPaidJobs.filter(job => !job.withFather);
+    
+    // Calculate totals from all payments
     const allPayments = jobs.flatMap(job => job.payments || []);
     const eldenPayments = allPayments.filter(p => p.paymentMethod === 'Elden');
     const ibanPayments = allPayments.filter(p => p.paymentMethod === 'IBAN');
     
-    // Calculate payments by father presence - TÜM ödemelerden
+    // Calculate payments by father presence
     const withFatherPayments = jobs
       .filter(job => job.withFather)
       .flatMap(job => job.payments || []);
@@ -136,27 +139,17 @@ export class JobService {
       .filter(job => !job.withFather)
       .flatMap(job => job.payments || []);
     
-    // Completed jobs: sadece tamamen ödenenler
-    const fullyPaidJobs = jobs.filter(job => JobUtils.isFullyPaid(job));
-    
     return {
-      // Toplam ciro: KISMEN ödenenler dahil TÜM ödemeler
       totalRevenue: allPayments.reduce((sum, payment) => sum + payment.amount, 0),
       totalCost: jobs.reduce((sum, job) => sum + job.cost, 0),
       completedJobs: fullyPaidJobs.length,
       pendingPayments: jobs.filter(job => !JobUtils.isFullyPaid(job)).length,
-      
-      // Babamla/tek başına ciro: KISMİ ödemeler dahil
       revenueWithFather: withFatherPayments.reduce((sum, payment) => sum + payment.amount, 0),
       revenueWithoutFather: withoutFatherPayments.reduce((sum, payment) => sum + payment.amount, 0),
-      
-      // Ödeme yöntemleri: KISMİ ödemeler dahil
       paymentMethods: {
         elden: eldenPayments.reduce((sum, payment) => sum + payment.amount, 0),
         iban: ibanPayments.reduce((sum, payment) => sum + payment.amount, 0),
       },
-      
-      // Detaylı ödeme dağılımı
       withFatherPayments: {
         elden: withFatherPayments.filter(p => p.paymentMethod === 'Elden').reduce((sum, p) => sum + p.amount, 0),
         iban: withFatherPayments.filter(p => p.paymentMethod === 'IBAN').reduce((sum, p) => sum + p.amount, 0),

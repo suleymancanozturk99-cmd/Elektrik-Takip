@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   View,
@@ -8,7 +9,6 @@ import {
   Platform,
   Modal,
   Alert,
-  TextInput,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,12 +19,9 @@ import { useJobs } from '@/hooks/useJobs';
 
 export default function SettingsPage() {
   const insets = useSafeAreaInsets();
-  const { jobs, importJobs, loading, manualBackup, getCurrentDeviceId, importJobsFromDevice } = useJobs();
+  const { jobs, importJobs, loading } = useJobs();
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
-  const [backupLoading, setBackupLoading] = useState(false);
-  const [deviceImportLoading, setDeviceImportLoading] = useState(false);
-  const [sourceDeviceId, setSourceDeviceId] = useState('');
 
   // Web Alert Handler
   const [alertConfig, setAlertConfig] = useState<{
@@ -39,38 +36,6 @@ export default function SettingsPage() {
       setAlertConfig({ visible: true, title, message, onOk });
     } else {
       Alert.alert(title, message, onOk ? [{ text: 'Tamam', onPress: onOk }] : undefined);
-    }
-  };
-
-  const handleManualBackup = async () => {
-    try {
-      setBackupLoading(true);
-      await manualBackup();
-      showWebAlert('Başarılı', 'Veriler Firebase\'e yedeklendi.');
-    } catch (error) {
-      console.error('Backup error:', error);
-      showWebAlert('Hata', 'Yedekleme sırasında hata oluştu.');
-    } finally {
-      setBackupLoading(false);
-    }
-  };
-
-  const handleImportFromDevice = async () => {
-    if (!sourceDeviceId.trim()) {
-      showWebAlert('Uyarı', 'Lütfen kaynak cihaz ID\'sini girin.');
-      return;
-    }
-
-    try {
-      setDeviceImportLoading(true);
-      await importJobsFromDevice(sourceDeviceId.trim());
-      showWebAlert('Başarılı', 'Veriler başarıyla aktarıldı.');
-      setSourceDeviceId('');
-    } catch (error) {
-      console.error('Device import error:', error);
-      showWebAlert('Hata', 'Veri aktarımında hata oluştu. Cihaz ID\'sini kontrol edin.');
-    } finally {
-      setDeviceImportLoading(false);
     }
   };
 
@@ -248,75 +213,13 @@ export default function SettingsPage() {
     }
   };
 
-  const currentDeviceId = getCurrentDeviceId();
-
   return (
     <ScrollView style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.content}>
-        {/* Firebase Backup Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🔥 Firebase Yedekleme</Text>
+          <Text style={styles.sectionTitle}>Veri Yedekleme</Text>
           <Text style={styles.sectionDescription}>
-            Verileriniz otomatik olarak Firebase'e kaydediliyor
-          </Text>
-
-          <TouchableOpacity
-            style={[styles.actionButton, styles.firebaseButton]}
-            onPress={handleManualBackup}
-            disabled={backupLoading}
-          >
-            <MaterialIcons name="cloud-upload" size={24} color="#ff5722" />
-            <View style={styles.buttonContent}>
-              <Text style={styles.buttonTitle}>Firebase'e Manuel Yedekle</Text>
-              <Text style={styles.buttonSubtitle}>
-                Tüm veriler • Anlık yedekleme
-              </Text>
-            </View>
-            {backupLoading && <MaterialIcons name="refresh" size={20} color="#666" />}
-          </TouchableOpacity>
-        </View>
-
-        {/* Device Management Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📱 Cihaz Yönetimi</Text>
-          <Text style={styles.sectionDescription}>
-            Bu cihazın ID'si ve diğer cihazlardan veri aktarımı
-          </Text>
-
-          <View style={styles.deviceIdContainer}>
-            <MaterialIcons name="smartphone" size={20} color="#2196f3" />
-            <View style={styles.deviceIdContent}>
-              <Text style={styles.deviceIdLabel}>Bu Cihazın ID'si:</Text>
-              <Text style={styles.deviceIdValue}>{currentDeviceId}</Text>
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Başka Cihazdan Veri Aktar:</Text>
-            <TextInput
-              style={styles.deviceIdInput}
-              value={sourceDeviceId}
-              onChangeText={setSourceDeviceId}
-              placeholder="Kaynak cihaz ID'sini girin"
-              placeholderTextColor="#999"
-            />
-            <TouchableOpacity
-              style={[styles.importDeviceButton, !sourceDeviceId.trim() && styles.disabledButton]}
-              onPress={handleImportFromDevice}
-              disabled={deviceImportLoading || !sourceDeviceId.trim()}
-            >
-              <MaterialIcons name="get-app" size={20} color="white" />
-              <Text style={styles.importDeviceButtonText}>Veri Aktar</Text>
-              {deviceImportLoading && <MaterialIcons name="refresh" size={16} color="white" />}
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Local Backup Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>💾 Yerel Yedekleme</Text>
-          <Text style={styles.sectionDescription}>
-            İş verilerinizi yerel dosya olarak kaydedin
+            İş verilerinizi yedekleyerek veri kaybını önleyin
           </Text>
 
           <TouchableOpacity
@@ -351,7 +254,7 @@ export default function SettingsPage() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📂 Veri Geri Yükleme</Text>
+          <Text style={styles.sectionTitle}>Veri Geri Yükleme</Text>
           <Text style={styles.sectionDescription}>
             Daha önce yedeklediğiniz verileri geri yükleyin
           </Text>
@@ -373,7 +276,7 @@ export default function SettingsPage() {
         </View>
 
         <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>📊 Veri İstatistikleri</Text>
+          <Text style={styles.sectionTitle}>Veri İstatistikleri</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
               <MaterialIcons name="work" size={32} color="#2196f3" />
@@ -398,9 +301,9 @@ export default function SettingsPage() {
         </View>
 
         <View style={styles.infoSection}>
-          <MaterialIcons name="info" size={20} color="#ff5722" />
+          <MaterialIcons name="info" size={20} color="#2196f3" />
           <Text style={styles.infoText}>
-            🔥 Firebase entegrasyonu aktif. Verileriniz bulutta güvende saklanıyor ve anlık olarak senkronize ediliyor.
+            Verileriniz sadece cihazınızda saklanır. Düzenli yedekleme yapmanız önerilir.
           </Text>
         </View>
       </View>
@@ -469,10 +372,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 12,
   },
-  firebaseButton: {
-    borderColor: '#ff5722',
-    backgroundColor: '#fff3e0',
-  },
   importButton: {
     borderColor: '#ff9800',
     backgroundColor: '#fff8f0',
@@ -490,63 +389,6 @@ const styles = StyleSheet.create({
   buttonSubtitle: {
     fontSize: 12,
     color: '#666',
-  },
-  deviceIdContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#e3f2fd',
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  deviceIdContent: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  deviceIdLabel: {
-    fontSize: 12,
-    color: '#1976d2',
-    marginBottom: 2,
-  },
-  deviceIdValue: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#0d47a1',
-  },
-  inputGroup: {
-    marginBottom: 8,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 8,
-  },
-  deviceIdInput: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    marginBottom: 12,
-    backgroundColor: 'white',
-  },
-  importDeviceButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#2196f3',
-    padding: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  disabledButton: {
-    backgroundColor: '#ccc',
-  },
-  importDeviceButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
   },
   statsSection: {
     backgroundColor: 'white',
@@ -583,14 +425,14 @@ const styles = StyleSheet.create({
   infoSection: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#fff3e0',
+    backgroundColor: '#e3f2fd',
     padding: 16,
     borderRadius: 8,
     marginTop: 8,
   },
   infoText: {
     fontSize: 12,
-    color: '#e65100',
+    color: '#1976d2',
     marginLeft: 8,
     flex: 1,
     lineHeight: 16,
