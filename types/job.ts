@@ -42,7 +42,7 @@ export interface JobStats {
   };
 }
 
-export type TimeFilter = 'daily' | 'weekly' | 'monthly';
+export type TimeFilter = 'daily' | 'weekly' | 'monthly' | 'all-time';
 
 // Helper functions for payment calculations
 export const JobUtils = {

@@ -24,7 +24,7 @@ export const JobContext = createContext<JobContextType | undefined>(undefined);
 
 export function JobProvider({ children }: { children: ReactNode }) {
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('monthly');
+    const [timeFilter, setTimeFilter] = useState<TimeFilter>('all-time');
   const [loading, setLoading] = useState(true);
 
   const loadJobs = async () => {
