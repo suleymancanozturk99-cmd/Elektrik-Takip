@@ -14,15 +14,27 @@ import { database, getDeviceId } from './firebase';
 import { Job, Payment, JobUtils } from '@/types/job';
 
 export class FirebaseJobService {
-  private static deviceId = getDeviceId();
+  private static userEmail: string = '';
   
-  // Get reference path for device-specific jobs
-  private static getDeviceJobsRef() {
-    return ref(database, `devices/${this.deviceId}/jobs`);
+  // Set user email for Firebase operations
+  static setUserEmail(email: string) {
+    // Convert email to Firebase-safe key (replace . with _)
+    this.userEmail = email.replace(/\./g, '_');
+  }
+
+  // Get reference path for user-specific jobs
+  private static getUserJobsRef() {
+    if (!this.userEmail) {
+      throw new Error('User email not set');
+    }
+    return ref(database, `users/${this.userEmail}/jobs`);
   }
 
   private static getJobRef(jobId: string) {
-    return ref(database, `devices/${this.deviceId}/jobs/${jobId}`);
+    if (!this.userEmail) {
+      throw new Error('User email not set');
+    }
+    return ref(database, `users/${this.userEmail}/jobs/${jobId}`);
   }
 
   // Save job to Firebase Realtime Database
@@ -51,7 +63,7 @@ export class FirebaseJobService {
   // Get all jobs from Firebase Realtime Database
   static async getAllJobs(): Promise<Job[]> {
     try {
-      const jobsRef = this.getDeviceJobsRef();
+      const jobsRef = this.getUserJobsRef();
       const snapshot = await get(jobsRef);
       
       if (!snapshot.exists()) {
@@ -117,7 +129,7 @@ export class FirebaseJobService {
 
   // Real-time listener for jobs
   static subscribeToJobs(callback: (jobs: Job[]) => void): () => void {
-    const jobsRef = this.getDeviceJobsRef();
+    const jobsRef = this.getUserJobsRef();
     
     const unsubscribe = onValue(jobsRef, (snapshot) => {
       if (!snapshot.exists()) {
@@ -148,14 +160,15 @@ export class FirebaseJobService {
     return () => off(jobsRef, 'value', unsubscribe);
   }
 
-  // Import jobs from another device
-  static async importJobsFromDevice(sourceDeviceId: string): Promise<Job[]> {
+  // Import jobs from another user
+  static async importJobsFromUser(sourceEmail: string): Promise<Job[]> {
     try {
-      const sourceJobsRef = ref(database, `devices/${sourceDeviceId}/jobs`);
+      const sourceUserKey = sourceEmail.replace(/\./g, '_');
+      const sourceJobsRef = ref(database, `users/${sourceUserKey}/jobs`);
       const snapshot = await get(sourceJobsRef);
       
       if (!snapshot.exists()) {
-        throw new Error('Source device has no data');
+        throw new Error('Source user has no data');
       }
       
       const jobsData = snapshot.val();
@@ -174,7 +187,7 @@ export class FirebaseJobService {
       
       return jobs;
     } catch (error) {
-      console.error('Error importing jobs from device:', error);
+      console.error('Error importing jobs from user:', error);
       throw error;
     }
   }
@@ -184,31 +197,31 @@ export class FirebaseJobService {
     try {
       // This method ensures all local data is synced to Firebase
       const jobs = await this.getAllJobs();
-      console.log(`Manual backup completed: ${jobs.length} jobs synced to Firebase Realtime Database`);
+      console.log(`Manual backup completed: ${jobs.length} jobs synced to Firebase Realtime Database for user: ${this.userEmail}`);
     } catch (error) {
       console.error('Error during manual backup:', error);
       throw error;
     }
   }
 
-  // Get current device ID
+  // Get current user email
   static getCurrentDeviceId(): string {
-    return this.deviceId;
+    return this.userEmail.replace(/_/g, '.');
   }
 
-  // Get all device IDs (for debugging/admin purposes)
-  static async getAllDevices(): Promise<string[]> {
+  // Get all users (for debugging/admin purposes)
+  static async getAllUsers(): Promise<string[]> {
     try {
-      const devicesRef = ref(database, 'devices');
-      const snapshot = await get(devicesRef);
+      const usersRef = ref(database, 'users');
+      const snapshot = await get(usersRef);
       
       if (!snapshot.exists()) {
         return [];
       }
       
-      return Object.keys(snapshot.val());
+      return Object.keys(snapshot.val()).map(key => key.replace(/_/g, '.'));
     } catch (error) {
-      console.error('Error getting all devices:', error);
+      console.error('Error getting all users:', error);
       return [];
     }
   }
