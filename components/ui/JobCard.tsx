@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -39,7 +40,7 @@ export default function JobCard({ job, onPress, showPaymentStatus = false }: Job
   };
 
   const formatCurrency = (amount: number) => {
-    return `₺${amount.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}`;
+    return `₺${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
   };
 
   return (
