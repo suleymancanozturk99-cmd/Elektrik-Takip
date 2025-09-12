@@ -1,12 +1,14 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getDatabase } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDj3wuBl9tVTpfiY0d8bteLaG0dVitdlhA",
   authDomain: "elektrikci-8cb43.firebaseapp.com",
+  databaseURL: "https://elektrikci-8cb43-default-rtdb.firebaseio.com/",
   projectId: "elektrikci-8cb43",
   storageBucket: "elektrikci-8cb43.appspot.com",
   messagingSenderId: "880417928580",
@@ -16,17 +18,33 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore
-export const db = getFirestore(app);
+// Initialize Realtime Database
+export const database = getDatabase(app);
 
 // Initialize Auth (optional)
 export const auth = getAuth(app);
 
-// Device ID generation for data separation
+// Consistent device ID generation
 export const getDeviceId = (): string => {
-  // Generate unique device ID
-  const deviceId = Device.modelName + '_' + Constants.installationId;
-  return deviceId.replace(/[^a-zA-Z0-9]/g, '_');
+  try {
+    // Create consistent device ID using available device info
+    const deviceInfo = {
+      model: Device.modelName || 'Unknown',
+      platform: Platform.OS,
+      installation: Constants.installationId || 'default',
+    };
+    
+    // Create a more readable device ID
+    const deviceId = `${deviceInfo.platform}_${deviceInfo.model}_${deviceInfo.installation}`
+      .replace(/[^a-zA-Z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .toLowerCase();
+    
+    return deviceId;
+  } catch (error) {
+    // Fallback to a simple ID if device info is not available
+    return `device_${Platform.OS}_${Date.now()}`;
+  }
 };
 
 export default app;

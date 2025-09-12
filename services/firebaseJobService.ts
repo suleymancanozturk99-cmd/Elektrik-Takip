@@ -1,77 +1,79 @@
 import { 
-  collection, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  getDocs, 
-  deleteDoc, 
-  updateDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  Timestamp 
-} from 'firebase/firestore';
-import { db, getDeviceId } from './firebase';
+  ref, 
+  push, 
+  set, 
+  get, 
+  remove, 
+  update,
+  onValue,
+  off,
+  orderByChild,
+  query
+} from 'firebase/database';
+import { database, getDeviceId } from './firebase';
 import { Job, Payment, JobUtils } from '@/types/job';
 
 export class FirebaseJobService {
   private static deviceId = getDeviceId();
   
-  // Collection path with device ID separation
-  private static getDeviceCollection() {
-    return collection(db, 'devices', this.deviceId, 'jobs');
+  // Get reference path for device-specific jobs
+  private static getDeviceJobsRef() {
+    return ref(database, `devices/${this.deviceId}/jobs`);
   }
 
-  // Save job to Firebase
+  private static getJobRef(jobId: string) {
+    return ref(database, `devices/${this.deviceId}/jobs/${jobId}`);
+  }
+
+  // Save job to Firebase Realtime Database
   static async saveJob(job: Job): Promise<void> {
     try {
-      const jobsCollection = this.getDeviceCollection();
-      const jobDoc = doc(jobsCollection, job.id);
+      const jobRef = this.getJobRef(job.id);
       
-      // Convert dates to Firestore Timestamps
+      // Convert dates to ISO strings for Realtime Database
       const jobData = {
         ...job,
-        createdAt: Timestamp.fromDate(new Date(job.createdAt)),
-        estimatedPaymentDate: job.estimatedPaymentDate 
-          ? Timestamp.fromDate(new Date(job.estimatedPaymentDate))
-          : null,
+        createdAt: job.createdAt,
+        estimatedPaymentDate: job.estimatedPaymentDate || null,
         payments: job.payments?.map(payment => ({
           ...payment,
-          paymentDate: Timestamp.fromDate(new Date(payment.paymentDate))
+          paymentDate: payment.paymentDate
         })) || []
       };
       
-      await setDoc(jobDoc, jobData);
+      await set(jobRef, jobData);
     } catch (error) {
       console.error('Error saving job to Firebase:', error);
       throw error;
     }
   }
 
-  // Get all jobs from Firebase
+  // Get all jobs from Firebase Realtime Database
   static async getAllJobs(): Promise<Job[]> {
     try {
-      const jobsCollection = this.getDeviceCollection();
-      const querySnapshot = await getDocs(query(jobsCollection, orderBy('createdAt', 'desc')));
+      const jobsRef = this.getDeviceJobsRef();
+      const snapshot = await get(jobsRef);
       
+      if (!snapshot.exists()) {
+        return [];
+      }
+      
+      const jobsData = snapshot.val();
       const jobs: Job[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
+      
+      Object.keys(jobsData).forEach((jobId) => {
+        const jobData = jobsData[jobId];
         const job: Job = {
-          ...data,
-          id: doc.id,
-          createdAt: data.createdAt.toDate().toISOString(),
-          estimatedPaymentDate: data.estimatedPaymentDate?.toDate().toISOString(),
-          payments: data.payments?.map((payment: any) => ({
-            ...payment,
-            paymentDate: payment.paymentDate.toDate().toISOString()
-          })) || []
-        } as Job;
+          ...jobData,
+          id: jobId,
+          payments: jobData.payments || []
+        };
         
         jobs.push(JobUtils.migrateJob(job));
       });
       
-      return jobs;
+      // Sort by creation date (newest first)
+      return jobs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (error) {
       console.error('Error getting jobs from Firebase:', error);
       return [];
@@ -81,24 +83,20 @@ export class FirebaseJobService {
   // Add payment to job
   static async addPayment(jobId: string, payment: Payment): Promise<void> {
     try {
-      const jobsCollection = this.getDeviceCollection();
-      const jobDoc = doc(jobsCollection, jobId);
-      const jobSnapshot = await getDoc(jobDoc);
+      const jobRef = this.getJobRef(jobId);
+      const jobSnapshot = await get(jobRef);
       
       if (!jobSnapshot.exists()) {
         throw new Error('Job not found');
       }
       
-      const jobData = jobSnapshot.data();
+      const jobData = jobSnapshot.val();
       const currentPayments = jobData.payments || [];
       
-      const newPayment = {
-        ...payment,
-        paymentDate: Timestamp.fromDate(new Date(payment.paymentDate))
-      };
+      const updatedPayments = [...currentPayments, payment];
       
-      await updateDoc(jobDoc, {
-        payments: [...currentPayments, newPayment]
+      await update(jobRef, {
+        payments: updatedPayments
       });
     } catch (error) {
       console.error('Error adding payment to Firebase:', error);
@@ -106,12 +104,11 @@ export class FirebaseJobService {
     }
   }
 
-  // Delete job from Firebase
+  // Delete job from Firebase Realtime Database
   static async deleteJob(jobId: string): Promise<void> {
     try {
-      const jobsCollection = this.getDeviceCollection();
-      const jobDoc = doc(jobsCollection, jobId);
-      await deleteDoc(jobDoc);
+      const jobRef = this.getJobRef(jobId);
+      await remove(jobRef);
     } catch (error) {
       console.error('Error deleting job from Firebase:', error);
       throw error;
@@ -120,50 +117,57 @@ export class FirebaseJobService {
 
   // Real-time listener for jobs
   static subscribeToJobs(callback: (jobs: Job[]) => void): () => void {
-    const jobsCollection = this.getDeviceCollection();
-    const q = query(jobsCollection, orderBy('createdAt', 'desc'));
+    const jobsRef = this.getDeviceJobsRef();
     
-    return onSnapshot(q, (querySnapshot) => {
+    const unsubscribe = onValue(jobsRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        callback([]);
+        return;
+      }
+      
+      const jobsData = snapshot.val();
       const jobs: Job[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
+      
+      Object.keys(jobsData).forEach((jobId) => {
+        const jobData = jobsData[jobId];
         const job: Job = {
-          ...data,
-          id: doc.id,
-          createdAt: data.createdAt.toDate().toISOString(),
-          estimatedPaymentDate: data.estimatedPaymentDate?.toDate().toISOString(),
-          payments: data.payments?.map((payment: any) => ({
-            ...payment,
-            paymentDate: payment.paymentDate.toDate().toISOString()
-          })) || []
-        } as Job;
+          ...jobData,
+          id: jobId,
+          payments: jobData.payments || []
+        };
         
         jobs.push(JobUtils.migrateJob(job));
       });
       
-      callback(jobs);
+      // Sort by creation date (newest first)
+      const sortedJobs = jobs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      callback(sortedJobs);
     });
+    
+    // Return unsubscribe function
+    return () => off(jobsRef, 'value', unsubscribe);
   }
 
   // Import jobs from another device
   static async importJobsFromDevice(sourceDeviceId: string): Promise<Job[]> {
     try {
-      const sourceCollection = collection(db, 'devices', sourceDeviceId, 'jobs');
-      const querySnapshot = await getDocs(query(sourceCollection, orderBy('createdAt', 'desc')));
+      const sourceJobsRef = ref(database, `devices/${sourceDeviceId}/jobs`);
+      const snapshot = await get(sourceJobsRef);
       
+      if (!snapshot.exists()) {
+        throw new Error('Source device has no data');
+      }
+      
+      const jobsData = snapshot.val();
       const jobs: Job[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
+      
+      Object.keys(jobsData).forEach((jobId) => {
+        const jobData = jobsData[jobId];
         const job: Job = {
-          ...data,
-          id: doc.id,
-          createdAt: data.createdAt.toDate().toISOString(),
-          estimatedPaymentDate: data.estimatedPaymentDate?.toDate().toISOString(),
-          payments: data.payments?.map((payment: any) => ({
-            ...payment,
-            paymentDate: payment.paymentDate.toDate().toISOString()
-          })) || []
-        } as Job;
+          ...jobData,
+          id: jobId,
+          payments: jobData.payments || []
+        };
         
         jobs.push(JobUtils.migrateJob(job));
       });
@@ -175,14 +179,12 @@ export class FirebaseJobService {
     }
   }
 
-  // Manual backup - copy current device data to Firebase
+  // Manual backup - ensure all local data is synced to Firebase
   static async manualBackup(): Promise<void> {
     try {
       // This method ensures all local data is synced to Firebase
-      // Since we're already using Firebase as primary storage, 
-      // this is more of a verification/sync operation
       const jobs = await this.getAllJobs();
-      console.log(`Backup completed: ${jobs.length} jobs synced to Firebase`);
+      console.log(`Manual backup completed: ${jobs.length} jobs synced to Firebase Realtime Database`);
     } catch (error) {
       console.error('Error during manual backup:', error);
       throw error;
@@ -192,5 +194,22 @@ export class FirebaseJobService {
   // Get current device ID
   static getCurrentDeviceId(): string {
     return this.deviceId;
+  }
+
+  // Get all device IDs (for debugging/admin purposes)
+  static async getAllDevices(): Promise<string[]> {
+    try {
+      const devicesRef = ref(database, 'devices');
+      const snapshot = await get(devicesRef);
+      
+      if (!snapshot.exists()) {
+        return [];
+      }
+      
+      return Object.keys(snapshot.val());
+    } catch (error) {
+      console.error('Error getting all devices:', error);
+      return [];
+    }
   }
 }
