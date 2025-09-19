@@ -11,10 +11,11 @@ export default function TimeFilterTabs({
   activeFilter, 
   onFilterChange
 }: TimeFilterTabsProps) {
-  const filters = [
+    const filters = [
     { key: 'daily' as TimeFilter, label: 'Günlük' },
     { key: 'weekly' as TimeFilter, label: 'Haftalık' },
     { key: 'monthly' as TimeFilter, label: 'Aylık' },
+    { key: 'all-time' as TimeFilter, label: 'Tüm Zamanlar' },
   ];
   return (
     <View style={styles.wrapper}>

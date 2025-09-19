@@ -13,12 +13,13 @@ export default function Dashboard() {
     return `₺${amount.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}`;
   };
 
-  const getFilterTitle = () => {
+    const getFilterTitle = () => {
     switch (timeFilter) {
       case 'daily': return 'Günlük';
       case 'weekly': return 'Haftalık';
       case 'monthly': return 'Aylık';
-      default: return 'Aylık';
+      case 'all-time': return 'Tüm Zamanlar';
+      default: return 'Tüm Zamanlar';
     }
   };
 
