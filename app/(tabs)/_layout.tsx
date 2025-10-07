@@ -62,7 +62,27 @@ export default function TabLayout() {
           ),
         }}
       />
-            <Tabs.Screen
+      <Tabs.Screen
+        name="customers"
+        options={{
+          title: 'Müşteriler',
+          headerTitle: 'Müşteri Listesi',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="people" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="notes"
+        options={{
+          title: 'Notlar',
+          headerTitle: 'Not Listesi',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="note" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="pending-payments"
         options={{
           title: 'Bekleyen Ödemeler',

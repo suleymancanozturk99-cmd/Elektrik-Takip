@@ -15,6 +15,7 @@ export interface Job {
   estimatedPaymentDate?: string; // ISO date string - sadece tam ödenmemiş işler için
   withFather: boolean; // Babam var mıydı
   createdAt: string; // ISO date string
+  customerId?: string; // Müşteri ilişkisi
   
   // Backward compatibility - deprecated fields
   isPaid?: boolean; // Will be calculated from payments
