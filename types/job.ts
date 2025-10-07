@@ -52,11 +52,13 @@ export const JobUtils = {
   },
   
   getRemainingBalance: (job: Job): number => {
-    return job.price - JobUtils.getTotalPaid(job);
+    const totalPaid = JobUtils.getTotalPaid(job);
+    return Math.max(0, job.price - totalPaid);
   },
   
   isFullyPaid: (job: Job): boolean => {
-    return JobUtils.getRemainingBalance(job) <= 0;
+    const totalPaid = JobUtils.getTotalPaid(job);
+    return totalPaid >= job.price;
   },
   
   getLastPaymentMethod: (job: Job): 'Elden' | 'IBAN' | null => {

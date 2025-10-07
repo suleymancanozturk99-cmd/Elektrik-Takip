@@ -16,12 +16,14 @@ import { router } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useJobs } from '@/hooks/useJobs';
+import { useCustomers } from '@/hooks/useCustomers';
 
 export default function AddJobPage() {
   const insets = useSafeAreaInsets();
   const { addJob } = useJobs();
+  const { customers } = useCustomers();
 
-    const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState({
     name: '',
     description: '',
     cost: '',
@@ -31,10 +33,12 @@ export default function AddJobPage() {
     estimatedPaymentDate: new Date(),
     paymentMethod: 'Elden' as 'Elden' | 'IBAN',
     withFather: false,
+    customerId: '',
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [paymentMethodModalVisible, setPaymentMethodModalVisible] = useState(false);
+  const [customerModalVisible, setCustomerModalVisible] = useState(false);
 
   // Web Alert Handler
   const [alertConfig, setAlertConfig] = useState<{
@@ -71,13 +75,14 @@ export default function AddJobPage() {
       return;
     }
 
-        try {
+    try {
       const jobData = {
         name: formData.name,
         description: formData.description,
         cost: parseFloat(formData.cost) || 0,
         price: totalPrice,
         withFather: formData.withFather,
+        customerId: formData.customerId || undefined,
         estimatedPaymentDate: !formData.hasInitialPayment ? formData.estimatedPaymentDate.toISOString() : undefined,
         initialPayment: formData.hasInitialPayment && initialPaymentAmount > 0 ? {
           amount: initialPaymentAmount,
@@ -101,6 +106,8 @@ export default function AddJobPage() {
       setFormData(prev => ({ ...prev, estimatedPaymentDate: selectedDate }));
     }
   };
+
+  const selectedCustomer = customers.find(c => c.id === formData.customerId);
 
   const PaymentMethodModal = () => (
     <Modal
@@ -145,9 +152,83 @@ export default function AddJobPage() {
     </Modal>
   );
 
+  const CustomerModal = () => (
+    <Modal
+      visible={customerModalVisible}
+      transparent
+      animationType="slide"
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Müşteri Seç</Text>
+            <TouchableOpacity onPress={() => setCustomerModalVisible(false)}>
+              <MaterialIcons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={styles.addCustomerButton}
+            onPress={() => {
+              setCustomerModalVisible(false);
+              router.push('/add-customer');
+            }}
+          >
+            <MaterialIcons name="person-add" size={20} color="#2196f3" />
+            <Text style={styles.addCustomerText}>Yeni Müşteri Ekle</Text>
+          </TouchableOpacity>
+
+          <ScrollView style={styles.customerList}>
+            <TouchableOpacity
+              style={[styles.customerOption, !formData.customerId && styles.selectedCustomer]}
+              onPress={() => {
+                setFormData(prev => ({ ...prev, customerId: '' }));
+                setCustomerModalVisible(false);
+              }}
+            >
+              <MaterialIcons name="clear" size={24} color="#666" />
+              <Text style={styles.customerOptionText}>Müşteri yok</Text>
+            </TouchableOpacity>
+
+            {customers.map((customer) => (
+              <TouchableOpacity
+                key={customer.id}
+                style={[styles.customerOption, formData.customerId === customer.id && styles.selectedCustomer]}
+                onPress={() => {
+                  setFormData(prev => ({ ...prev, customerId: customer.id }));
+                  setCustomerModalVisible(false);
+                }}
+              >
+                <MaterialIcons name="person" size={24} color="#2196f3" />
+                <View style={styles.customerInfo}>
+                  <Text style={styles.customerName}>{customer.name}</Text>
+                  <Text style={styles.customerPhone}>{customer.phone}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <ScrollView style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.form}>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Müşteri (İsteğe bağlı)</Text>
+          <TouchableOpacity
+            style={styles.customerButton}
+            onPress={() => setCustomerModalVisible(true)}
+          >
+            <MaterialIcons name="person" size={20} color="#666" />
+            <Text style={styles.customerButtonText}>
+              {selectedCustomer ? `${selectedCustomer.name} - ${selectedCustomer.phone}` : 'Müşteri seç'}
+            </Text>
+            <MaterialIcons name="keyboard-arrow-down" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>İş Adı *</Text>
           <TextInput
@@ -194,7 +275,7 @@ export default function AddJobPage() {
           </View>
         </View>
 
-                        <View style={styles.switchRow}>
+        <View style={styles.switchRow}>
           <Text style={styles.label}>İlk ödeme alındı mı?</Text>
           <Switch
             value={formData.hasInitialPayment}
@@ -284,6 +365,7 @@ export default function AddJobPage() {
       )}
 
       <PaymentMethodModal />
+      <CustomerModal />
 
       {/* Web Alert Modal */}
       {Platform.OS === 'web' && (
@@ -384,6 +466,22 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 8,
   },
+  customerButton: {
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  customerButtonText: {
+    fontSize: 16,
+    color: '#333',
+    flex: 1,
+    marginLeft: 8,
+  },
   saveButton: {
     backgroundColor: '#2196f3',
     flexDirection: 'row',
@@ -410,12 +508,19 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 24,
     minWidth: 280,
+    maxWidth: 400,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 16,
     textAlign: 'center',
   },
   methodOption: {
@@ -443,6 +548,55 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     fontSize: 16,
+    color: '#666',
+  },
+  addCustomerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#e3f2fd',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  addCustomerText: {
+    fontSize: 16,
+    color: '#2196f3',
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  customerList: {
+    maxHeight: 300,
+  },
+  customerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  selectedCustomer: {
+    backgroundColor: '#e3f2fd',
+    borderColor: '#2196f3',
+  },
+  customerOptionText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 12,
+  },
+  customerInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  customerName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  customerPhone: {
+    fontSize: 14,
     color: '#666',
   },
   alertOverlay: {
