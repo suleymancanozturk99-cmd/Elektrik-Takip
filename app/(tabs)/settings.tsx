@@ -16,10 +16,11 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useJobs } from '@/hooks/useJobs';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function SettingsPage() {
   const insets = useSafeAreaInsets();
-    const { jobs, importJobs, loading, manualBackup, getCurrentDeviceId, importJobsFromDevice } = useJobs();
+  const { jobs, importJobs, loading, manualBackup, getCurrentDeviceId, importJobsFromDevice } = useJobs();
   const { user, logout } = useAuth();
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
