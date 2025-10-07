@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   View,
@@ -9,6 +8,7 @@ import {
   Platform,
   Modal,
   Alert,
+  TextInput,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,9 +19,13 @@ import { useJobs } from '@/hooks/useJobs';
 
 export default function SettingsPage() {
   const insets = useSafeAreaInsets();
-  const { jobs, importJobs, loading } = useJobs();
+    const { jobs, importJobs, loading, manualBackup, getCurrentDeviceId, importJobsFromDevice } = useJobs();
+  const { user, logout } = useAuth();
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [deviceImportLoading, setDeviceImportLoading] = useState(false);
+  const [sourceEmail, setSourceEmail] = useState('');
 
   // Web Alert Handler
   const [alertConfig, setAlertConfig] = useState<{
@@ -37,6 +41,53 @@ export default function SettingsPage() {
     } else {
       Alert.alert(title, message, onOk ? [{ text: 'Tamam', onPress: onOk }] : undefined);
     }
+  };
+
+  const handleManualBackup = async () => {
+    try {
+      setBackupLoading(true);
+      await manualBackup();
+      showWebAlert('Başarılı', 'Veriler Firebase\'e yedeklendi.');
+    } catch (error) {
+      console.error('Backup error:', error);
+      showWebAlert('Hata', 'Yedekleme sırasında hata oluştu.');
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleImportFromUser = async () => {
+    if (!sourceEmail.trim()) {
+      showWebAlert('Uyarı', 'Lütfen kaynak email adresini girin.');
+      return;
+    }
+
+    try {
+      setDeviceImportLoading(true);
+      await importJobsFromDevice(sourceEmail.trim());
+      showWebAlert('Başarılı', 'Veriler başarıyla aktarıldı.');
+      setSourceEmail('');
+    } catch (error) {
+      console.error('User import error:', error);
+      showWebAlert('Hata', 'Veri aktarımında hata oluştu. Email adresini kontrol edin.');
+    } finally {
+      setDeviceImportLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    showWebAlert(
+      'Çıkış Yap',
+      'Çıkış yapmak istediğinizden emin misiniz?',
+      async () => {
+        try {
+          await logout();
+          showWebAlert('Başarılı', 'Çıkış yapıldı.');
+        } catch (error) {
+          showWebAlert('Hata', 'Çıkış yapılırken bir hata oluştu.');
+        }
+      }
+    );
   };
 
   const exportToJSON = async () => {
@@ -213,13 +264,85 @@ export default function SettingsPage() {
     }
   };
 
+  const currentUserEmail = getCurrentDeviceId();
+
   return (
     <ScrollView style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.content}>
+        {/* Firebase Backup Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Veri Yedekleme</Text>
+          <Text style={styles.sectionTitle}>🔥 Firebase Yedekleme</Text>
           <Text style={styles.sectionDescription}>
-            İş verilerinizi yedekleyerek veri kaybını önleyin
+            Verileriniz otomatik olarak Firebase'e kaydediliyor
+          </Text>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.firebaseButton]}
+            onPress={handleManualBackup}
+            disabled={backupLoading}
+          >
+            <MaterialIcons name="cloud-upload" size={24} color="#ff5722" />
+            <View style={styles.buttonContent}>
+              <Text style={styles.buttonTitle}>Firebase'e Manuel Yedekle</Text>
+              <Text style={styles.buttonSubtitle}>
+                Tüm veriler • Anlık yedekleme
+              </Text>
+            </View>
+            {backupLoading && <MaterialIcons name="refresh" size={20} color="#666" />}
+          </TouchableOpacity>
+        </View>
+
+        {/* User Management Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>👤 Kullanıcı Yönetimi</Text>
+          <Text style={styles.sectionDescription}>
+            Mevcut kullanıcı ve diğer kullanıcılardan veri aktarımı
+          </Text>
+
+          <View style={styles.deviceIdContainer}>
+            <MaterialIcons name="email" size={20} color="#2196f3" />
+            <View style={styles.deviceIdContent}>
+              <Text style={styles.deviceIdLabel}>Mevcut Email:</Text>
+              <Text style={styles.deviceIdValue}>{currentUserEmail}</Text>
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Başka Kullanıcıdan Veri Aktar:</Text>
+            <TextInput
+              style={styles.deviceIdInput}
+              value={sourceEmail}
+              onChangeText={setSourceEmail}
+              placeholder="Kaynak email adresini girin"
+              placeholderTextColor="#999"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <TouchableOpacity
+              style={[styles.importDeviceButton, !sourceEmail.trim() && styles.disabledButton]}
+              onPress={handleImportFromUser}
+              disabled={deviceImportLoading || !sourceEmail.trim()}
+            >
+              <MaterialIcons name="get-app" size={20} color="white" />
+              <Text style={styles.importDeviceButtonText}>Veri Aktar</Text>
+              {deviceImportLoading && <MaterialIcons name="refresh" size={16} color="white" />}
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+          >
+            <MaterialIcons name="logout" size={20} color="white" />
+            <Text style={styles.logoutButtonText}>Çıkış Yap</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Local Backup Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>💾 Yerel Yedekleme</Text>
+          <Text style={styles.sectionDescription}>
+            İş verilerinizi yerel dosya olarak kaydedin
           </Text>
 
           <TouchableOpacity
@@ -254,7 +377,7 @@ export default function SettingsPage() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Veri Geri Yükleme</Text>
+          <Text style={styles.sectionTitle}>📂 Veri Geri Yükleme</Text>
           <Text style={styles.sectionDescription}>
             Daha önce yedeklediğiniz verileri geri yükleyin
           </Text>
@@ -276,7 +399,7 @@ export default function SettingsPage() {
         </View>
 
         <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>Veri İstatistikleri</Text>
+          <Text style={styles.sectionTitle}>📊 Veri İstatistikleri</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
               <MaterialIcons name="work" size={32} color="#2196f3" />
@@ -301,9 +424,9 @@ export default function SettingsPage() {
         </View>
 
         <View style={styles.infoSection}>
-          <MaterialIcons name="info" size={20} color="#2196f3" />
+          <MaterialIcons name="info" size={20} color="#ff5722" />
           <Text style={styles.infoText}>
-            Verileriniz sadece cihazınızda saklanır. Düzenli yedekleme yapmanız önerilir.
+            🔥 Firebase entegrasyonu aktif. Verileriniz bulutta güvende saklanıyor ve anlık olarak senkronize ediliyor.
           </Text>
         </View>
       </View>
@@ -372,6 +495,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 12,
   },
+  firebaseButton: {
+    borderColor: '#ff5722',
+    backgroundColor: '#fff3e0',
+  },
   importButton: {
     borderColor: '#ff9800',
     backgroundColor: '#fff8f0',
@@ -389,6 +516,63 @@ const styles = StyleSheet.create({
   buttonSubtitle: {
     fontSize: 12,
     color: '#666',
+  },
+  deviceIdContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#e3f2fd',
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  deviceIdContent: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  deviceIdLabel: {
+    fontSize: 12,
+    color: '#1976d2',
+    marginBottom: 2,
+  },
+  deviceIdValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#0d47a1',
+  },
+  inputGroup: {
+    marginBottom: 8,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 8,
+  },
+  deviceIdInput: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    marginBottom: 12,
+    backgroundColor: 'white',
+  },
+  importDeviceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2196f3',
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+  },
+  importDeviceButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   statsSection: {
     backgroundColor: 'white',
@@ -425,17 +609,32 @@ const styles = StyleSheet.create({
   infoSection: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#e3f2fd',
+    backgroundColor: '#fff3e0',
     padding: 16,
     borderRadius: 8,
     marginTop: 8,
   },
   infoText: {
     fontSize: 12,
-    color: '#1976d2',
+    color: '#e65100',
     marginLeft: 8,
     flex: 1,
     lineHeight: 16,
+  },
+  logoutButton: {
+    backgroundColor: '#f44336',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    gap: 8,
+  },
+  logoutButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   alertOverlay: {
     flex: 1,

@@ -1,7 +1,10 @@
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Job, JobStats, TimeFilter, Payment, JobUtils } from '@/types/job';
 
 const JOBS_STORAGE_KEY = 'electrician_jobs';
+
+export type SearchFilter = 'all' | 'name' | 'description';
 
 export class JobService {
   static async getAllJobs(): Promise<Job[]> {
@@ -96,7 +99,29 @@ export class JobService {
     }
   }
 
-    static filterJobsByTime(jobs: Job[], filter: TimeFilter): Job[] {
+  // Search functionality
+  static searchJobs(jobs: Job[], searchQuery: string, filter: SearchFilter = 'all'): Job[] {
+    if (!searchQuery.trim()) {
+      return jobs;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    
+    return jobs.filter(job => {
+      switch (filter) {
+        case 'name':
+          return job.name.toLowerCase().includes(query);
+        case 'description':
+          return job.description.toLowerCase().includes(query);
+        case 'all':
+        default:
+          return job.name.toLowerCase().includes(query) || 
+                 job.description.toLowerCase().includes(query);
+      }
+    });
+  }
+
+  static filterJobsByTime(jobs: Job[], filter: TimeFilter): Job[] {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
@@ -115,12 +140,13 @@ export class JobService {
           return jobDate.getMonth() === now.getMonth() && 
                  jobDate.getFullYear() === now.getFullYear();
         case 'all-time':
-          return true; // Tüm zamanlar için tüm işleri dahil et
+          return true;
         default:
           return true;
       }
     });
   }
+
   static calculateStats(jobs: Job[]): JobStats {
     // Kısmi ödemeler de dahil olmak üzere TÜM ödemeleri hesapla
     const allPayments = jobs.flatMap(job => job.payments || []);
