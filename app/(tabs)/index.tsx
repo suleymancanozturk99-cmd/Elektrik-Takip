@@ -5,15 +5,17 @@ import { useJobs } from '@/hooks/useJobs';
 import MetricCard from '@/components/ui/MetricCard';
 import TimeFilterTabs from '@/components/ui/TimeFilterTabs';
 import PaymentMethodCard from '@/components/ui/PaymentMethodCard';
+import PaymentSummaryCard from '@/components/ui/PaymentSummaryCard';
+
 export default function Dashboard() {
   const insets = useSafeAreaInsets();
-  const { stats, timeFilter, setTimeFilter, loading, refreshJobs } = useJobs();
+  const { stats, timeFilter, setTimeFilter, loading, refreshJobs, paymentStats } = useJobs();
 
   const formatCurrency = (amount: number) => {
     return `₺${amount.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}`;
   };
 
-    const getFilterTitle = () => {
+  const getFilterTitle = () => {
     switch (timeFilter) {
       case 'daily': return 'Günlük';
       case 'weekly': return 'Haftalık';
@@ -34,10 +36,12 @@ export default function Dashboard() {
         <Text style={styles.welcomeText}>Hoş Geldiniz</Text>
         <Text style={styles.subtitleText}>{getFilterTitle()} Performans Özeti</Text>
       </View>
-            <TimeFilterTabs 
+      
+      <TimeFilterTabs 
         activeFilter={timeFilter} 
         onFilterChange={setTimeFilter}
       />
+
       <View style={styles.metricsGrid}>
         <View style={styles.metricsRow}>
           <View style={styles.metricItem}>
@@ -110,6 +114,11 @@ export default function Dashboard() {
         ibanAmount={stats.paymentMethods.iban}
       />
 
+      <PaymentSummaryCard 
+        paymentStats={paymentStats}
+        timeFilterLabel={getFilterTitle()}
+      />
+
       <View style={styles.summary}>
         <Text style={styles.summaryTitle}>Özet</Text>
         <View style={styles.summaryItem}>
@@ -168,7 +177,8 @@ const styles = StyleSheet.create({
   subtitleText: {
     fontSize: 16,
     color: '#666',
-  },    metricsGrid: {
+  },
+  metricsGrid: {
     paddingHorizontal: 12,
     paddingBottom: 8,
   },

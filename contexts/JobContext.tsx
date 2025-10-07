@@ -15,6 +15,7 @@ interface JobContextType {
   searchFilter: SearchFilter;
   searchResults: Job[];
   searchResultCount: number;
+  paymentStats: any;
   setTimeFilter: (filter: TimeFilter) => void;
   setSearchQuery: (query: string) => void;
   setSearchFilter: (filter: SearchFilter) => void;
@@ -222,6 +223,9 @@ export function JobProvider({ children }: { children: ReactNode }) {
   const searchResults = JobService.searchJobs(filteredJobs, searchQuery, searchFilter);
   const searchResultCount = searchResults.length;
 
+  // Payment stats calculation
+  const paymentStats = JobService.calculatePaymentStats(jobs, timeFilter);
+
   return (
     <JobContext.Provider value={{
       jobs,
@@ -234,6 +238,7 @@ export function JobProvider({ children }: { children: ReactNode }) {
       searchFilter,
       searchResults,
       searchResultCount,
+      paymentStats,
       setTimeFilter,
       setSearchQuery,
       setSearchFilter,

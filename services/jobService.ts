@@ -1,4 +1,3 @@
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Job, JobStats, TimeFilter, Payment, JobUtils } from '@/types/job';
 
@@ -145,6 +144,136 @@ export class JobService {
           return true;
       }
     });
+  }
+
+  // NEW: Payment-based filtering functions
+  static getPaymentsByTimeFilter(jobs: Job[], filter: TimeFilter): Payment[] {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Get all payments from all jobs
+    const allPayments: (Payment & { jobName: string; withFather: boolean; jobCreatedAt: string })[] = [];
+    
+    jobs.forEach(job => {
+      if (job.payments && job.payments.length > 0) {
+        job.payments.forEach(payment => {
+          allPayments.push({
+            ...payment,
+            jobName: job.name,
+            withFather: job.withFather,
+            jobCreatedAt: job.createdAt
+          });
+        });
+      }
+    });
+    
+    // Filter payments by payment date
+    return allPayments.filter(payment => {
+      const paymentDate = new Date(payment.paymentDate);
+      const paymentDay = new Date(paymentDate.getFullYear(), paymentDate.getMonth(), paymentDate.getDate());
+      
+      switch (filter) {
+        case 'daily':
+          return paymentDay.getTime() === today.getTime();
+        case 'weekly':
+          const weekStart = new Date(today);
+          weekStart.setDate(today.getDate() - today.getDay());
+          return paymentDay >= weekStart && paymentDay <= today;
+        case 'monthly':
+          return paymentDate.getMonth() === now.getMonth() && 
+                 paymentDate.getFullYear() === now.getFullYear();
+        case 'all-time':
+          return true;
+        default:
+          return true;
+      }
+    });
+  }
+
+  static calculatePaymentStats(jobs: Job[], filter: TimeFilter): any {
+    const payments = this.getPaymentsByTimeFilter(jobs, filter);
+    
+    if (payments.length === 0) {
+      return {
+        totalReceived: 0,
+        paymentCount: 0,
+        eldenAmount: 0,
+        ibanAmount: 0,
+        oldJobsAmount: 0,
+        withFatherAmount: 0,
+        paymentDetails: []
+      };
+    }
+
+    const now = new Date();
+    const filterStartDate = this.getFilterStartDate(filter);
+    
+    let totalReceived = 0;
+    let eldenAmount = 0;
+    let ibanAmount = 0;
+    let oldJobsAmount = 0;
+    let withFatherAmount = 0;
+    
+    const paymentDetails = payments.map(payment => {
+      totalReceived += payment.amount;
+      
+      if (payment.paymentMethod === 'Elden') {
+        eldenAmount += payment.amount;
+      } else {
+        ibanAmount += payment.amount;
+      }
+      
+      if (payment.withFather) {
+        withFatherAmount += payment.amount;
+      }
+      
+      // Check if this is payment for an old job
+      const jobCreatedDate = new Date(payment.jobCreatedAt);
+      if (jobCreatedDate < filterStartDate) {
+        oldJobsAmount += payment.amount;
+      }
+      
+      return {
+        id: payment.id,
+        jobName: payment.jobName,
+        amount: payment.amount,
+        paymentMethod: payment.paymentMethod,
+        paymentDate: payment.paymentDate,
+        withFather: payment.withFather,
+        isOldJob: jobCreatedDate < filterStartDate
+      };
+    });
+    
+    return {
+      totalReceived,
+      paymentCount: payments.length,
+      eldenAmount,
+      ibanAmount,
+      oldJobsAmount,
+      withFatherAmount,
+      paymentDetails: paymentDetails.sort((a, b) => 
+        new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()
+      )
+    };
+  }
+
+  private static getFilterStartDate(filter: TimeFilter): Date {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (filter) {
+      case 'daily':
+        return today;
+      case 'weekly':
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - today.getDay());
+        return weekStart;
+      case 'monthly':
+        return new Date(now.getFullYear(), now.getMonth(), 1);
+      case 'all-time':
+      default:
+        return new Date(0); // Beginning of time
+    }
   }
 
   static calculateStats(jobs: Job[]): JobStats {
