@@ -37,23 +37,46 @@ export class FirebaseJobService {
     return ref(database, `users/${this.userEmail}/jobs/${jobId}`);
   }
 
+  // Clean data by removing undefined values
+  private static cleanData(obj: any): any {
+    if (obj === null || obj === undefined) {
+      return null;
+    }
+    
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.cleanData(item));
+    }
+    
+    if (typeof obj === 'object') {
+      const cleaned: any = {};
+      for (const key in obj) {
+        if (obj[key] !== undefined) {
+          cleaned[key] = this.cleanData(obj[key]);
+        }
+      }
+      return cleaned;
+    }
+    
+    return obj;
+  }
+
   // Save job to Firebase Realtime Database
   static async saveJob(job: Job): Promise<void> {
     try {
       const jobRef = this.getJobRef(job.id);
       
-      // Convert dates to ISO strings for Realtime Database
-      const jobData = {
+      // Clean job data to remove undefined values
+      const cleanJobData = this.cleanData({
         ...job,
         createdAt: job.createdAt,
         estimatedPaymentDate: job.estimatedPaymentDate || null,
-        payments: job.payments?.map(payment => ({
+        payments: job.payments?.map(payment => this.cleanData({
           ...payment,
           paymentDate: payment.paymentDate
         })) || []
-      };
+      });
       
-      await set(jobRef, jobData);
+      await set(jobRef, cleanJobData);
     } catch (error) {
       console.error('Error saving job to Firebase:', error);
       throw error;
@@ -105,7 +128,8 @@ export class FirebaseJobService {
       const jobData = jobSnapshot.val();
       const currentPayments = jobData.payments || [];
       
-      const updatedPayments = [...currentPayments, payment];
+      const cleanPayment = this.cleanData(payment);
+      const updatedPayments = [...currentPayments, cleanPayment];
       
       await update(jobRef, {
         payments: updatedPayments

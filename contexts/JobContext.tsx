@@ -64,14 +64,28 @@ export function JobProvider({ children }: { children: ReactNode }) {
   const addJob = async (jobData: Omit<Job, 'id' | 'createdAt' | 'payments'> & { 
     initialPayment?: { amount: number; paymentMethod: 'Elden' | 'IBAN' } 
   }) => {
+    // Clean the job data to remove undefined values
+    const cleanJobData: any = {
+      name: jobData.name || '',
+      description: jobData.description || '',
+      cost: jobData.cost || 0,
+      price: jobData.price || 0,
+      withFather: jobData.withFather || false,
+    };
+
+    // Only add estimatedPaymentDate if it's defined
+    if (jobData.estimatedPaymentDate) {
+      cleanJobData.estimatedPaymentDate = jobData.estimatedPaymentDate;
+    }
+
     const newJob: Job = {
-      ...jobData,
+      ...cleanJobData,
       id: Date.now().toString(),
       createdAt: new Date().toISOString(),
       payments: [],
     };
     
-    // Add initial payment if provided
+    // Add initial payment if provided and amount > 0
     if (jobData.initialPayment && jobData.initialPayment.amount > 0) {
       newJob.payments = [{
         id: `${newJob.id}_initial`,
@@ -82,7 +96,7 @@ export function JobProvider({ children }: { children: ReactNode }) {
       
       // Remove estimated payment date if fully paid
       if (jobData.initialPayment.amount >= newJob.price) {
-        newJob.estimatedPaymentDate = undefined;
+        delete newJob.estimatedPaymentDate;
       }
     }
     
@@ -91,7 +105,23 @@ export function JobProvider({ children }: { children: ReactNode }) {
   };
 
   const updateJob = async (updatedJob: Job) => {
-    await FirebaseJobService.saveJob(updatedJob);
+    // Clean the job data before saving
+    const cleanJob = {
+      ...updatedJob,
+      name: updatedJob.name || '',
+      description: updatedJob.description || '',
+      cost: updatedJob.cost || 0,
+      price: updatedJob.price || 0,
+      withFather: updatedJob.withFather || false,
+      payments: updatedJob.payments || [],
+    };
+
+    // Only include estimatedPaymentDate if it exists
+    if (updatedJob.estimatedPaymentDate) {
+      cleanJob.estimatedPaymentDate = updatedJob.estimatedPaymentDate;
+    }
+
+    await FirebaseJobService.saveJob(cleanJob);
     // Real-time listener will update local state automatically
   };
 
@@ -102,8 +132,9 @@ export function JobProvider({ children }: { children: ReactNode }) {
 
   const addPayment = async (jobId: string, paymentData: Omit<Payment, 'id' | 'paymentDate'>) => {
     const payment: Payment = {
-      ...paymentData,
       id: `${jobId}_${Date.now()}`,
+      amount: paymentData.amount || 0,
+      paymentMethod: paymentData.paymentMethod || 'Elden',
       paymentDate: new Date().toISOString(),
     };
     
@@ -121,7 +152,23 @@ export function JobProvider({ children }: { children: ReactNode }) {
     try {
       // Save each job to Firebase
       for (const job of importedJobs) {
-        await FirebaseJobService.saveJob(job);
+        // Clean job data before saving
+        const cleanJob = {
+          ...job,
+          name: job.name || '',
+          description: job.description || '',
+          cost: job.cost || 0,
+          price: job.price || 0,
+          withFather: job.withFather || false,
+          payments: job.payments || [],
+        };
+
+        // Only include estimatedPaymentDate if it exists
+        if (job.estimatedPaymentDate) {
+          cleanJob.estimatedPaymentDate = job.estimatedPaymentDate;
+        }
+
+        await FirebaseJobService.saveJob(cleanJob);
       }
       // Real-time listener will update local state automatically
     } catch (error) {
@@ -143,7 +190,23 @@ export function JobProvider({ children }: { children: ReactNode }) {
       const jobs = await FirebaseJobService.importJobsFromUser(sourceEmail);
       // Import all jobs from the other user
       for (const job of jobs) {
-        await FirebaseJobService.saveJob(job);
+        // Clean job data before saving
+        const cleanJob = {
+          ...job,
+          name: job.name || '',
+          description: job.description || '',
+          cost: job.cost || 0,
+          price: job.price || 0,
+          withFather: job.withFather || false,
+          payments: job.payments || [],
+        };
+
+        // Only include estimatedPaymentDate if it exists
+        if (job.estimatedPaymentDate) {
+          cleanJob.estimatedPaymentDate = job.estimatedPaymentDate;
+        }
+
+        await FirebaseJobService.saveJob(cleanJob);
       }
     } catch (error) {
       console.error('Error importing jobs from user:', error);
