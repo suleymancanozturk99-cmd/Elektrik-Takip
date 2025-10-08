@@ -16,12 +16,17 @@ import { router, useLocalSearchParams } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useJobs } from '@/hooks/useJobs';
+import { useCustomers } from '@/hooks/useCustomers';
+import { useNotes } from '@/hooks/useNotes';
 import { Job } from '@/types/job';
+import PaymentHistoryCard from '@/components/ui/PaymentHistoryCard';
 
 export default function JobDetailPage() {
   const insets = useSafeAreaInsets();
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
   const { jobs, updateJob, deleteJob } = useJobs();
+  const { getCustomerById } = useCustomers();
+  const { getJobNotes } = useNotes();
 
   const [job, setJob] = useState<Job | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -30,14 +35,11 @@ export default function JobDetailPage() {
     description: '',
     cost: '',
     price: '',
-    isPaid: false,
     estimatedPaymentDate: new Date(),
-    paymentMethod: 'Elden' as 'Elden' | 'IBAN',
     withFather: false,
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [paymentMethodModalVisible, setPaymentMethodModalVisible] = useState(false);
 
   // Web Alert Handler
   const [alertConfig, setAlertConfig] = useState<{
@@ -64,9 +66,7 @@ export default function JobDetailPage() {
         description: foundJob.description,
         cost: foundJob.cost.toString(),
         price: foundJob.price.toString(),
-        isPaid: foundJob.isPaid,
         estimatedPaymentDate: foundJob.estimatedPaymentDate ? new Date(foundJob.estimatedPaymentDate) : new Date(),
-        paymentMethod: foundJob.paymentMethod,
         withFather: foundJob.withFather,
       });
     }
@@ -85,9 +85,7 @@ export default function JobDetailPage() {
         description: formData.description,
         cost: parseFloat(formData.cost) || 0,
         price: parseFloat(formData.price) || 0,
-        isPaid: formData.isPaid,
-        estimatedPaymentDate: !formData.isPaid ? formData.estimatedPaymentDate.toISOString() : undefined,
-        paymentMethod: formData.paymentMethod,
+        estimatedPaymentDate: formData.estimatedPaymentDate.toISOString(),
         withFather: formData.withFather,
       };
 
@@ -124,7 +122,7 @@ export default function JobDetailPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return `₺${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
+    return `₺${amount.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}`;
   };
 
   const formatDate = (dateString: string) => {
@@ -139,52 +137,38 @@ export default function JobDetailPage() {
     );
   }
 
-  const PaymentMethodModal = () => (
-    <Modal
-      visible={paymentMethodModalVisible}
-      transparent
-      animationType="fade"
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Ödeme Yöntemi Seçin</Text>
-          
-          <TouchableOpacity
-            style={[styles.methodOption, formData.paymentMethod === 'Elden' && styles.selectedMethod]}
-            onPress={() => {
-              setFormData(prev => ({ ...prev, paymentMethod: 'Elden' }));
-              setPaymentMethodModalVisible(false);
-            }}
-          >
-            <MaterialIcons name="account-balance-wallet" size={24} color="#2196f3" />
-            <Text style={styles.methodText}>Elden</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.methodOption, formData.paymentMethod === 'IBAN' && styles.selectedMethod]}
-            onPress={() => {
-              setFormData(prev => ({ ...prev, paymentMethod: 'IBAN' }));
-              setPaymentMethodModalVisible(false);
-            }}
-          >
-            <MaterialIcons name="account-balance" size={24} color="#2196f3" />
-            <Text style={styles.methodText}>IBAN</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => setPaymentMethodModalVisible(false)}
-          >
-            <Text style={styles.cancelButtonText}>İptal</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
+  // Get customer and notes data
+  const customer = job.customerId ? getCustomerById(job.customerId) : null;
+  const jobNotes = getJobNotes(job.id);
+  const totalPaid = job.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+  const remaining = job.price - totalPaid;
+  const isFullyPaid = totalPaid >= job.price;
 
   return (
     <ScrollView style={[styles.container, { paddingTop: insets.top }]}>
-            <View style={styles.content}>
+      <View style={styles.content}>
+        {/* Customer Info Section */}        
+        {customer && (
+          <TouchableOpacity 
+            style={styles.customerCard}
+            onPress={() => router.push({
+              pathname: '/customer-detail',
+              params: { customerId: customer.id }
+            })}
+          >
+            <View style={styles.customerHeader}>
+              <MaterialIcons name="person" size={24} color="#2196f3" />
+              <Text style={styles.customerTitle}>Müşteri Bilgileri</Text>
+              <MaterialIcons name="chevron-right" size={24} color="#ccc" />
+            </View>
+            <Text style={styles.customerName}>{customer.name}</Text>
+            <Text style={styles.customerPhone}>{customer.phone}</Text>
+            {customer.address && (
+              <Text style={styles.customerAddress}>{customer.address}</Text>
+            )}
+          </TouchableOpacity>
+        )}
+
         {isEditing ? (
           // Edit Mode
           <View style={styles.form}>
@@ -234,65 +218,19 @@ export default function JobDetailPage() {
               </View>
             </View>
 
-                        <View style={styles.switchRow}>
-              <Text style={styles.label}>Ödeme alındı mı?</Text>
-              <Switch
-                value={formData.isPaid}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, isPaid: value }))}
-                trackColor={{ false: '#767577', true: '#4caf50' }}
-                thumbColor={formData.isPaid ? '#ffffff' : '#f4f3f4'}
-              />
-            </View>
-
-            {formData.isPaid && (
+            {!isFullyPaid && (
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Ödeme Yöntemi *</Text>
+                <Text style={styles.label}>Tahmini Ödeme Tarihi</Text>
                 <TouchableOpacity
-                  style={styles.methodButton}
-                  onPress={() => setPaymentMethodModalVisible(true)}
+                  style={styles.dateButton}
+                  onPress={() => setShowDatePicker(true)}
                 >
-                  <MaterialIcons 
-                    name={formData.paymentMethod === 'Elden' ? 'account-balance-wallet' : 'account-balance'} 
-                    size={20} 
-                    color="#666" 
-                  />
-                  <Text style={styles.methodButtonText}>{formData.paymentMethod}</Text>
-                  <MaterialIcons name="keyboard-arrow-down" size={20} color="#666" />
+                  <MaterialIcons name="calendar-today" size={20} color="#666" />
+                  <Text style={styles.dateButtonText}>
+                    {formData.estimatedPaymentDate.toLocaleDateString('tr-TR')}
+                  </Text>
                 </TouchableOpacity>
               </View>
-            )}
-
-            {!formData.isPaid && (
-              <>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Tahmini Ödeme Tarihi</Text>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={() => setShowDatePicker(true)}
-                  >
-                    <MaterialIcons name="calendar-today" size={20} color="#666" />
-                    <Text style={styles.dateButtonText}>
-                      {formData.estimatedPaymentDate.toLocaleDateString('tr-TR')}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Ödeme Yöntemi</Text>
-                  <TouchableOpacity
-                    style={styles.methodButton}
-                    onPress={() => setPaymentMethodModalVisible(true)}
-                  >
-                    <MaterialIcons 
-                      name={formData.paymentMethod === 'Elden' ? 'account-balance-wallet' : 'account-balance'} 
-                      size={20} 
-                      color="#666" 
-                    />
-                    <Text style={styles.methodButtonText}>{formData.paymentMethod}</Text>
-                    <MaterialIcons name="keyboard-arrow-down" size={20} color="#666" />
-                  </TouchableOpacity>
-                </View>
-              </>
             )}
 
             <View style={styles.switchRow}>
@@ -310,15 +248,13 @@ export default function JobDetailPage() {
               <Text style={styles.saveButtonText}>Değişiklikleri Kaydet</Text>
             </TouchableOpacity>
 
-            <View style={styles.actionButtonsContainer}>
-              <TouchableOpacity
-                style={[styles.bottomActionButton, styles.editButton]}
-                onPress={() => setIsEditing(false)}
-              >
-                <MaterialIcons name="close" size={24} color="white" />
-                <Text style={styles.bottomActionButtonText}>İptal</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={[styles.bottomActionButton, styles.cancelButton]}
+              onPress={() => setIsEditing(false)}
+            >
+              <MaterialIcons name="close" size={24} color="white" />
+              <Text style={styles.bottomActionButtonText}>İptal</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           // View Mode
@@ -330,12 +266,12 @@ export default function JobDetailPage() {
               <View style={styles.statusRow}>
                 <View style={styles.statusItem}>
                   <MaterialIcons 
-                    name={job.isPaid ? "check-circle" : "schedule"} 
+                    name={isFullyPaid ? "check-circle" : "schedule"} 
                     size={24} 
-                    color={job.isPaid ? "#4caf50" : "#ff9800"} 
+                    color={isFullyPaid ? "#4caf50" : "#ff9800"} 
                   />
-                  <Text style={[styles.statusText, { color: job.isPaid ? "#4caf50" : "#ff9800" }]}>
-                    {job.isPaid ? 'Ödendi' : 'Bekliyor'}
+                  <Text style={[styles.statusText, { color: isFullyPaid ? "#4caf50" : "#ff9800" }]}>
+                    {isFullyPaid ? 'Tamamen Ödendi' : 'Ödeme Bekliyor'}
                   </Text>
                 </View>
                 
@@ -372,17 +308,8 @@ export default function JobDetailPage() {
                 <MaterialIcons name="calendar-today" size={20} color="#666" />
                 <Text style={styles.infoText}>İş Tarihi: {formatDate(job.createdAt)}</Text>
               </View>
-              
-              <View style={styles.infoRow}>
-                <MaterialIcons 
-                  name={job.paymentMethod === 'Elden' ? 'account-balance-wallet' : 'account-balance'} 
-                  size={20} 
-                  color="#666" 
-                />
-                <Text style={styles.infoText}>Ödeme: {job.paymentMethod}</Text>
-              </View>
 
-              {!job.isPaid && job.estimatedPaymentDate && (
+              {!isFullyPaid && job.estimatedPaymentDate && (
                 <View style={styles.infoRow}>
                   <MaterialIcons name="schedule" size={20} color="#ff9800" />
                   <Text style={styles.infoText}>
@@ -392,20 +319,75 @@ export default function JobDetailPage() {
               )}
             </View>
 
-            {/* Action Buttons - Always visible at bottom */}
+            {/* Payment History */}
+            <PaymentHistoryCard 
+              payments={job.payments || []}
+              totalAmount={job.price}
+            />
+
+            {/* Job Notes Section */}
+            {jobNotes.length > 0 && (
+              <View style={styles.notesSection}>
+                <Text style={styles.sectionTitle}>İş Notları ({jobNotes.length})</Text>
+                {jobNotes.map((note) => (
+                  <View key={note.id} style={styles.noteCard}>
+                    <View style={styles.noteHeader}>
+                      <Text style={styles.noteCategory}>{note.category || 'genel'}</Text>
+                      <Text style={styles.noteDate}>{formatDate(note.createdAt)}</Text>
+                    </View>
+                    <Text style={styles.noteContent}>{note.content}</Text>
+                    <View style={styles.noteStatus}>
+                      <MaterialIcons 
+                        name={note.status === 'tamamlandı' ? 'check-circle' : 'radio-button-unchecked'} 
+                        size={16} 
+                        color={note.status === 'tamamlandı' ? '#4caf50' : '#ccc'} 
+                      />
+                      <Text style={[styles.noteStatusText, { 
+                        color: note.status === 'tamamlandı' ? '#4caf50' : '#666' 
+                      }]}>
+                        {note.status === 'tamamlandı' ? 'Tamamlandı' : 'Aktif'}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Quick Actions */}
+            <View style={styles.quickActions}>
+              <TouchableOpacity
+                style={styles.actionCard}
+                onPress={() => router.push({
+                  pathname: '/add-note',
+                  params: { preSelectedJobId: job.id }
+                })}
+              >
+                <MaterialIcons name="note-add" size={24} color="#4caf50" />
+                <Text style={styles.actionText}>Not Ekle</Text>
+              </TouchableOpacity>
+              
+              {!isFullyPaid && (
+                <TouchableOpacity
+                  style={styles.actionCard}
+                  onPress={() => router.push({
+                    pathname: '/add-payment',
+                    params: { jobId: job.id }
+                  })}
+                >
+                  <MaterialIcons name="payment" size={24} color="#ff9800" />
+                  <Text style={styles.actionText}>Ödeme Ekle</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Action Buttons */}
             <View style={styles.actionButtonsContainer}>
               <TouchableOpacity
                 style={[styles.bottomActionButton, styles.editButton]}
                 onPress={() => setIsEditing(!isEditing)}
               >
-                <MaterialIcons 
-                  name={isEditing ? "close" : "edit"} 
-                  size={24} 
-                  color="white" 
-                />
-                <Text style={styles.bottomActionButtonText}>
-                  {isEditing ? 'İptal' : 'Düzenle'}
-                </Text>
+                <MaterialIcons name="edit" size={24} color="white" />
+                <Text style={styles.bottomActionButtonText}>Düzenle</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
@@ -429,8 +411,6 @@ export default function JobDetailPage() {
           minimumDate={new Date()}
         />
       )}
-
-      <PaymentMethodModal />
 
       {/* Web Alert Modal */}
       {Platform.OS === 'web' && (
@@ -466,9 +446,46 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   content: {
     flex: 1,
+  },
+  customerCard: {
+    backgroundColor: 'white',
+    margin: 16,
+    padding: 16,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  customerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  customerTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    flex: 1,
+    marginLeft: 8,
+  },
+  customerName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  customerPhone: {
+    fontSize: 14,
+    color: '#2196f3',
+    marginBottom: 4,
+  },
+  customerAddress: {
+    fontSize: 12,
+    color: '#666',
   },
   details: {
     padding: 16,
@@ -558,6 +575,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     padding: 20,
     borderRadius: 12,
+    marginBottom: 16,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -574,7 +592,79 @@ const styles = StyleSheet.create({
     color: '#666',
     marginLeft: 12,
   },
-  // Form styles (copied from add-job.tsx)
+  notesSection: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  noteCard: {
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  noteHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  noteCategory: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#2196f3',
+    textTransform: 'uppercase',
+  },
+  noteDate: {
+    fontSize: 12,
+    color: '#999',
+  },
+  noteContent: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  noteStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  noteStatusText: {
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  actionCard: {
+    flex: 1,
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  actionText: {
+    fontSize: 14,
+    color: '#333',
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  // Form styles
   form: {
     padding: 16,
   },
@@ -629,22 +719,6 @@ const styles = StyleSheet.create({
     color: '#333',
     marginLeft: 8,
   },
-  methodButton: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  methodButtonText: {
-    fontSize: 16,
-    color: '#333',
-    flex: 1,
-    marginLeft: 8,
-  },
   saveButton: {
     backgroundColor: '#2196f3',
     flexDirection: 'row',
@@ -653,6 +727,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     marginTop: 24,
+    marginBottom: 12,
   },
   saveButtonText: {
     color: 'white',
@@ -660,51 +735,34 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
   },
-  modalOverlay: {
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  bottomActionButton: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 24,
-    minWidth: 280,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  methodOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    marginBottom: 8,
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 8,
   },
-  selectedMethod: {
-    borderColor: '#2196f3',
-    backgroundColor: '#e3f2fd',
+  editButton: {
+    backgroundColor: '#2196f3',
   },
-  methodText: {
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 12,
+  deleteButton: {
+    backgroundColor: '#f44336',
   },
   cancelButton: {
-    padding: 12,
-    alignItems: 'center',
-    marginTop: 8,
+    backgroundColor: '#666',
   },
-  cancelButtonText: {
+  bottomActionButtonText: {
+    color: 'white',
     fontSize: 16,
-    color: '#666',
+    fontWeight: 'bold',
   },
   alertOverlay: {
     flex: 1,
@@ -735,34 +793,6 @@ const styles = StyleSheet.create({
   },
   alertButtonText: {
     color: 'white',
-    fontWeight: 'bold',
-  },
-  actionButtonsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    gap: 12,
-    backgroundColor: '#f5f5f5',
-  },
-  bottomActionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    gap: 8,
-  },
-  editButton: {
-    backgroundColor: '#2196f3',
-  },
-  deleteButton: {
-    backgroundColor: '#f44336',
-  },
-  bottomActionButtonText: {
-    color: 'white',
-    fontSize: 16,
     fontWeight: 'bold',
   },
 });
