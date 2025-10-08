@@ -82,7 +82,7 @@ export default function AddJobPage() {
         cost: parseFloat(formData.cost) || 0,
         price: totalPrice,
         withFather: formData.withFather,
-        customerId: formData.customerId || null,
+        customerId: formData.customerId || undefined,
         estimatedPaymentDate: !formData.hasInitialPayment ? formData.estimatedPaymentDate.toISOString() : undefined,
         initialPayment: formData.hasInitialPayment && initialPaymentAmount > 0 ? {
           amount: initialPaymentAmount,
