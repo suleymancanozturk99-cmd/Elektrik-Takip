@@ -223,7 +223,7 @@ export default function AddJobPage() {
           >
             <MaterialIcons name="person" size={20} color="#666" />
             <Text style={styles.customerButtonText}>
-              {selectedCustomer ? `${selectedCustomer.name} - ${selectedcustomerid}` : 'Müşteri seç'}
+              {selectedCustomer ? `${selectedCustomer.name} - ${selectedcustomer.id}` : 'Müşteri seç'}
             </Text>
             <MaterialIcons name="keyboard-arrow-down" size={20} color="#666" />
           </TouchableOpacity>
