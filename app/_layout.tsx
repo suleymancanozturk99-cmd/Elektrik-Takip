@@ -20,6 +20,7 @@ export default function RootLayout() {
                 <Stack.Screen name="job-detail" options={{ headerShown: true, title: 'İş Detayı' }} />
                 <Stack.Screen name="add-payment" options={{ headerShown: true, title: 'Ödeme Ekle' }} />
                 <Stack.Screen name="add-customer" options={{ headerShown: true, title: 'Müşteri Ekle' }} />
+                <Stack.Screen name="customer-detail" options={{ headerShown: true, title: 'Müşteri Detayı' }} />
                 <Stack.Screen name="add-note" options={{ headerShown: true, title: 'Not Ekle' }} />
               </Stack>
             </AuthGuard>
