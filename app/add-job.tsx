@@ -82,7 +82,7 @@ export default function AddJobPage() {
         cost: parseFloat(formData.cost) || 0,
         price: totalPrice,
         withFather: formData.withFather,
-        customerId: formatdata.formData.customerId || null,
+        customerId: formData.customerId || null,
         estimatedPaymentDate: !formData.hasInitialPayment ? formData.estimatedPaymentDate.toISOString() : undefined,
         initialPayment: formData.hasInitialPayment && initialPaymentAmount > 0 ? {
           amount: initialPaymentAmount,
@@ -223,7 +223,7 @@ export default function AddJobPage() {
           >
             <MaterialIcons name="person" size={20} color="#666" />
             <Text style={styles.customerButtonText}>
-              {selectedCustomer ? `${selectedCustomer.name} - ${selectedCustomer.id}` : 'Müşteri seç'}
+              {selectedCustomer ? `${selectedCustomer.name} - ${selectedCustomer.phone}` : 'Müşteri seç'}
             </Text>
             <MaterialIcons name="keyboard-arrow-down" size={20} color="#666" />
           </TouchableOpacity>
