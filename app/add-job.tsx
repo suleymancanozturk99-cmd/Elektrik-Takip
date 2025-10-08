@@ -107,7 +107,7 @@ export default function AddJobPage() {
     }
   };
 
-  const selectedCustomer = customers.find(c => customer.id === formData.customerId);
+  const selectedCustomer = customers.find(c => c.id === formData.customerId);
 
   const PaymentMethodModal = () => (
     <Modal
