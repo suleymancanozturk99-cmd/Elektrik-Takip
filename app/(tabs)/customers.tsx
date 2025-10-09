@@ -15,7 +15,8 @@ export default function CustomersPage() {
     refreshCustomers,
     searchQuery,
     setSearchQuery,
-    getCustomerWithStats
+    getCustomerWithStats,
+    deleteCustomer
   } = useCustomers();
   const { jobs } = useJobs();
 
@@ -46,6 +47,24 @@ export default function CustomersPage() {
     router.push('/add-customer');
   };
 
+  const handleDeleteCustomer = async (customerId: string) => {
+    try {
+      await deleteCustomer(customerId);
+      showWebAlert('Başarılı', 'Müşteri başarıyla silindi.');
+    } catch (error) {
+      showWebAlert('Hata', 'Müşteri silinirken bir hata oluştu.');
+    }
+  };
+
+  const confirmDeleteCustomer = (customer: Customer) => {
+    const customerJobs = jobs.filter(job => job.customerId === customer.id);
+    const message = customerJobs.length > 0 
+      ? `${customer.name} müşterisini silmek istediğinizden emin misiniz?\n\nBu müşteriye ait ${customerJobs.length} iş kaydı da silinecek.`
+      : `${customer.name} müşterisini silmek istediğinizden emin misiniz?`;
+    
+    showWebAlert('Müşteriyi Sil', message, () => handleDeleteCustomer(customer.id));
+  };
+
   const formatCurrency = (amount: number) => {
     return `₺${amount.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}`;
   };
@@ -55,49 +74,59 @@ export default function CustomersPage() {
     if (!customerWithStats) return null;
 
     return (
-      <TouchableOpacity 
-        style={styles.customerCard} 
-        onPress={() => handleCustomerPress(item)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.customerHeader}>
-          <View style={styles.customerInfo}>
-            <Text style={styles.customerName}>{item.name}</Text>
-            <Text style={styles.customerPhone}>{item.phone}</Text>
-            {item.address && (
-              <Text style={styles.customerAddress} numberOfLines={1}>{item.address}</Text>
-            )}
+      <View style={styles.customerCardContainer}>
+        <TouchableOpacity 
+          style={styles.customerCard} 
+          onPress={() => handleCustomerPress(item)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.customerHeader}>
+            <View style={styles.customerInfo}>
+              <Text style={styles.customerName}>{item.name}</Text>
+              <Text style={styles.customerPhone}>{item.phone}</Text>
+              {item.address && (
+                <Text style={styles.customerAddress} numberOfLines={1}>{item.address}</Text>
+              )}
+            </View>
+            <View style={styles.customerStats}>
+              <Text style={styles.statValue}>{customerWithStats.totalJobs}</Text>
+              <Text style={styles.statLabel}>İş</Text>
+            </View>
           </View>
-          <View style={styles.customerStats}>
-            <Text style={styles.statValue}>{customerWithStats.totalJobs}</Text>
-            <Text style={styles.statLabel}>İş</Text>
-          </View>
-        </View>
 
-        <View style={styles.customerFooter}>
-          <View style={styles.revenueInfo}>
-            <MaterialIcons name="account-balance-wallet" size={16} color="#4caf50" />
-            <Text style={styles.revenueText}>
-              {formatCurrency(customerWithStats.totalRevenue)}
-            </Text>
-          </View>
-          
-          {customerWithStats.pendingPayments > 0 && (
-            <View style={styles.pendingInfo}>
-              <MaterialIcons name="schedule" size={16} color="#ff9800" />
-              <Text style={styles.pendingText}>
-                {customerWithStats.pendingPayments} bekleyen
+          <View style={styles.customerFooter}>
+            <View style={styles.revenueInfo}>
+              <MaterialIcons name="account-balance-wallet" size={16} color="#4caf50" />
+              <Text style={styles.revenueText}>
+                {formatCurrency(customerWithStats.totalRevenue)}
               </Text>
             </View>
-          )}
+            
+            {customerWithStats.pendingPayments > 0 && (
+              <View style={styles.pendingInfo}>
+                <MaterialIcons name="schedule" size={16} color="#ff9800" />
+                <Text style={styles.pendingText}>
+                  {customerWithStats.pendingPayments} bekleyen
+                </Text>
+              </View>
+            )}
 
-          {customerWithStats.lastJobDate && (
-            <Text style={styles.lastJobDate}>
-              Son iş: {new Date(customerWithStats.lastJobDate).toLocaleDateString('tr-TR')}
-            </Text>
-          )}
-        </View>
-      </TouchableOpacity>
+            {customerWithStats.lastJobDate && (
+              <Text style={styles.lastJobDate}>
+                Son iş: {new Date(customerWithStats.lastJobDate).toLocaleDateString('tr-TR')}
+              </Text>
+            )}
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => confirmDeleteCustomer(item)}
+          activeOpacity={0.7}
+        >
+          <MaterialIcons name="delete" size={20} color="#f44336" />
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -234,10 +263,15 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingBottom: 100,
   },
-  customerCard: {
-    backgroundColor: 'white',
+  customerCardContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginHorizontal: 16,
     marginVertical: 8,
+  },
+  customerCard: {
+    flex: 1,
+    backgroundColor: 'white',
     padding: 16,
     borderRadius: 12,
     elevation: 2,
@@ -316,6 +350,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
   },
+  deleteButton: {
+    backgroundColor: '#ffebee',
+    padding: 12,
+    borderRadius: 8,
+    marginLeft: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   fab: {
     position: 'absolute',
     right: 16,
@@ -377,6 +419,7 @@ const styles = StyleSheet.create({
   alertMessage: {
     fontSize: 16,
     marginBottom: 20,
+    lineHeight: 22,
   },
   alertButton: {
     backgroundColor: '#007AFF',

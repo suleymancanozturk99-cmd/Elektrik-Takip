@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, TextInput, Platform, Modal } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, TextInput, Platform, Modal, Animated, PanGestureHandler, State } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,7 +22,8 @@ export default function NotesPage() {
     categoryFilter,
     setCategoryFilter,
     toggleNoteStatus,
-    getNotesWithRelations
+    getNotesWithRelations,
+    deleteNote
   } = useNotes();
   const { customers } = useCustomers();
   const { jobs } = useJobs();
@@ -55,6 +56,22 @@ export default function NotesPage() {
     }
   };
 
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      await deleteNote(noteId);
+    } catch (error) {
+      showWebAlert('Hata', 'Not silinirken bir hata oluştu.');
+    }
+  };
+
+  const confirmDeleteNote = (noteId: string) => {
+    showWebAlert(
+      'Notu Sil',
+      'Bu notu silmek istediğinizden emin misiniz?',
+      () => handleDeleteNote(noteId)
+    );
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return `${date.toLocaleDateString('tr-TR')} ${date.toLocaleTimeString('tr-TR', { 
@@ -65,53 +82,99 @@ export default function NotesPage() {
 
   const notesWithRelations = getNotesWithRelations(customers, jobs);
 
-  const renderNote = ({ item }: { item: Note }) => {
+  const SwipeableNoteCard = ({ item }: { item: Note }) => {
     const noteWithRelation = notesWithRelations.find(n => n.id === item.id);
     const categoryColor = NoteUtils.getCategoryColor(item.category);
     const isCompleted = item.status === 'tamamlandı';
+    
+    const translateX = new Animated.Value(0);
+
+    const onGestureEvent = Animated.event(
+      [{ nativeEvent: { translationX: translateX } }],
+      { useNativeDriver: true }
+    );
+
+    const onHandlerStateChange = (event: any) => {
+      if (event.nativeEvent.state === State.END) {
+        const { translationX } = event.nativeEvent;
+        
+        if (translationX < -100) {
+          // Swipe left to delete
+          confirmDeleteNote(item.id);
+        }
+        
+        // Reset position
+        Animated.spring(translateX, {
+          toValue: 0,
+          useNativeDriver: true,
+        }).start();
+      }
+    };
 
     return (
-      <View style={[styles.noteCard, isCompleted && styles.completedCard]}>
-        <View style={styles.noteHeader}>
-          <View style={[styles.categoryIndicator, { backgroundColor: categoryColor }]} />
-          <View style={styles.noteInfo}>
-            <Text style={styles.categoryText}>{item.category || 'genel'}</Text>
-            <Text style={styles.noteDate}>{formatDate(item.createdAt)}</Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => handleToggleStatus(item.id)}
-            style={styles.statusButton}
-          >
-            <MaterialIcons 
-              name={isCompleted ? 'check-circle' : 'radio-button-unchecked'} 
-              size={24} 
-              color={isCompleted ? '#4caf50' : '#ccc'} 
-            />
-          </TouchableOpacity>
+      <View style={styles.swipeContainer}>
+        <View style={styles.deleteAction}>
+          <MaterialIcons name="delete" size={24} color="white" />
+          <Text style={styles.deleteText}>Sil</Text>
         </View>
+        
+        <PanGestureHandler
+          onGestureEvent={onGestureEvent}
+          onHandlerStateChange={onHandlerStateChange}
+        >
+          <Animated.View 
+            style={[
+              styles.noteCard, 
+              isCompleted && styles.completedCard,
+              { transform: [{ translateX }] }
+            ]}
+          >
+            <View style={styles.noteHeader}>
+              <View style={[styles.categoryIndicator, { backgroundColor: categoryColor }]} />
+              <View style={styles.noteInfo}>
+                <Text style={styles.categoryText}>{item.category || 'genel'}</Text>
+                <Text style={styles.noteDate}>{formatDate(item.createdAt)}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => handleToggleStatus(item.id)}
+                style={styles.statusButton}
+              >
+                <MaterialIcons 
+                  name={isCompleted ? 'check-circle' : 'radio-button-unchecked'} 
+                  size={24} 
+                  color={isCompleted ? '#4caf50' : '#ccc'} 
+                />
+              </TouchableOpacity>
+            </View>
 
-        <Text style={[styles.noteContent, isCompleted && styles.completedText]}>
-          {item.content}
-        </Text>
+            <Text style={[styles.noteContent, isCompleted && styles.completedText]}>
+              {item.content}
+            </Text>
 
-        {(noteWithRelation?.customerName || noteWithRelation?.jobName) && (
-          <View style={styles.relationsContainer}>
-            {noteWithRelation?.customerName && (
-              <View style={styles.relationTag}>
-                <MaterialIcons name="person" size={14} color="#2196f3" />
-                <Text style={styles.relationText}>{noteWithRelation.customerName}</Text>
+            {(noteWithRelation?.customerName || noteWithRelation?.jobName) && (
+              <View style={styles.relationsContainer}>
+                {noteWithRelation?.customerName && (
+                  <View style={styles.relationTag}>
+                    <MaterialIcons name="person" size={14} color="#2196f3" />
+                    <Text style={styles.relationText}>{noteWithRelation.customerName}</Text>
+                  </View>
+                )}
+                {noteWithRelation?.jobName && (
+                  <View style={styles.relationTag}>
+                    <MaterialIcons name="work" size={14} color="#ff9800" />
+                    <Text style={styles.relationText}>{noteWithRelation.jobName}</Text>
+                  </View>
+                )}
               </View>
             )}
-            {noteWithRelation?.jobName && (
-              <View style={styles.relationTag}>
-                <MaterialIcons name="work" size={14} color="#ff9800" />
-                <Text style={styles.relationText}>{noteWithRelation.jobName}</Text>
-              </View>
-            )}
-          </View>
-        )}
+          </Animated.View>
+        </PanGestureHandler>
       </View>
     );
+  };
+
+  const renderNote = ({ item }: { item: Note }) => {
+    return <SwipeableNoteCard item={item} />;
   };
 
   const renderEmptyComponent = () => (
@@ -226,6 +289,8 @@ export default function NotesPage() {
         </View>
       )}
 
+      <Text style={styles.swipeHint}>💡 Silmek için sola kaydırın</Text>
+
       <FlatList
         data={searchResults}
         renderItem={renderNote}
@@ -333,13 +398,42 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#e65100',
   },
+  swipeHint: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: '#666',
+    paddingVertical: 8,
+    backgroundColor: '#f0f8ff',
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 8,
+  },
   listContainer: {
     paddingBottom: 100,
   },
-  noteCard: {
-    backgroundColor: 'white',
+  swipeContainer: {
     marginHorizontal: 16,
     marginVertical: 8,
+  },
+  deleteAction: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#f44336',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    borderRadius: 12,
+  },
+  deleteText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginTop: 4,
+  },
+  noteCard: {
+    backgroundColor: 'white',
     padding: 16,
     borderRadius: 12,
     elevation: 2,
