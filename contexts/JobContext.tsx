@@ -65,13 +65,14 @@ export function JobProvider({ children }: { children: ReactNode }) {
   const addJob = async (jobData: Omit<Job, 'id' | 'createdAt' | 'payments'> & { 
     initialPayment?: { amount: number; paymentMethod: 'Elden' | 'IBAN' } 
   }) => {
-    // Clean the job data to remove undefined values
+    // Clean the job data to remove undefined values and include customerId
     const cleanJobData: any = {
       name: jobData.name || '',
       description: jobData.description || '',
       cost: jobData.cost || 0,
       price: jobData.price || 0,
       withFather: jobData.withFather || false,
+      customerId: jobData.customerId || null, // ✅ FIX: customerId eklendi
     };
 
     // Only add estimatedPaymentDate if it's defined
@@ -115,6 +116,7 @@ export function JobProvider({ children }: { children: ReactNode }) {
       price: updatedJob.price || 0,
       withFather: updatedJob.withFather || false,
       payments: updatedJob.payments || [],
+      customerId: updatedJob.customerId || null, // ✅ customerId korundu
     };
 
     // Only include estimatedPaymentDate if it exists
@@ -162,6 +164,7 @@ export function JobProvider({ children }: { children: ReactNode }) {
           price: job.price || 0,
           withFather: job.withFather || false,
           payments: job.payments || [],
+          customerId: job.customerId || null, // ✅ customerId korundu
         };
 
         // Only include estimatedPaymentDate if it exists
@@ -200,6 +203,7 @@ export function JobProvider({ children }: { children: ReactNode }) {
           price: job.price || 0,
           withFather: job.withFather || false,
           payments: job.payments || [],
+          customerId: job.customerId || null, // ✅ customerId korundu
         };
 
         // Only include estimatedPaymentDate if it exists
